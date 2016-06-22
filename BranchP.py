@@ -15,9 +15,10 @@ def BranchP(clk,
            jalr,
            ENABLE=True,
            D_WIDTH=32,
-           BLOCK_WIDTH,
-           SET_WIDTH,
-           WAYS):
+           BLOCK_WIDTH=5,
+           SET_WIDTH=9,
+           WAYS=2,
+           LIMIT_WIDTH=32):
     """
     The Branch Predictor module.
     :param clk:         System clock
@@ -26,7 +27,12 @@ def BranchP(clk,
     :param branch:
     :param invalidate:  Enable flush Branch Predictor
     :param jalr:
-    :param Enable:  Enable Branch Predictor
+    :param Enable:      Enable Branch Predictor
+    :param D_WIDTH:     Data width
+    :param BLOCK_WIDTH: Address width for byte access inside a block line
+    :param SET_WIDTH:   Address width for line access inside a block
+    :param WAYS:        Number of ways for associative cache (Minimum: 2)
+    :param LIMIT_WIDTH: Maximum width for address
     """
     if ENABLE:
         """
@@ -63,6 +69,12 @@ def BranchP(clk,
         branch_taken       = Signal(False) #SEÑAL QUE SALE DEL EX
         condition          = Signal(False)
         prediction         = Signal(False)
+        
+        #SEÑALES DEL Branch Target Address Cache 
+        tag                = Signal(modbv(0)[TAG_WIDTH:]) # se utilizara if_pc como etiqueta, REVISAR TAMAÑO
+        adress_target      = Signal(modbv(0)[D_WIDTH:])   # direccion de salto, REVISAR TAMAÑO
+        valid_bit          = Signal(False)                # bit de validez
+        jump               = Signal(False)                # es un salto incondicional?, jump=1 incondicional, jump=0 condicional
 
         @always_comb
         def next_state_logic():
@@ -96,8 +108,5 @@ def BranchP(clk,
         return instances()
     else:
         return instances()
-# Local Variables:
-# flycheck-flake8-maximum-line-length: 300
-# flycheck-flake8rc: ".flake8rc"
-# End:
 
+# End:
