@@ -13,7 +13,11 @@ def BranchP(clk,
            branch,
            invalidate,
            jalr,
-           ENABLE=True):
+           ENABLE=True,
+           D_WIDTH=32,
+           BLOCK_WIDTH,
+           SET_WIDTH,
+           WAYS):
     """
     The Branch Predictor module.
     :param clk:         System clock
