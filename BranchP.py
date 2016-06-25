@@ -1,4 +1,3 @@
-
 from myhdl import Signal
 from myhdl import always
 from myhdl import always_comb
@@ -37,7 +36,6 @@ def BranchP(clk,
     if ENABLE:
         """
         PARAMETROS QUE TENDRA EL BP INTERNAMENTE. MODIFICAR
-
         """
         assert D_WIDTH == 32, "Error: Unsupported D_WIDTH. Supported values: {32}"
         assert BLOCK_WIDTH > 0, "Error: BLOCK_WIDTH must be a value > 0"
@@ -53,19 +51,17 @@ def BranchP(clk,
         # --------------------------------------------------------------------------
         """
         ESTADOS DEL BP
-
         """
-        bp_states = enum('ST',
+        bp_states_p = enum('ST',
                          'WT',
                          'WN',
                          'SN')
         """
         INICIALIZACION DE SENALES
-
         """
 
-        state              = Signal(bp_states.WT)
-        n_state            = Signal(bp_states.WT)
+        state_p            = Signal(bp_states_p.WN)
+        n_state_p          = Signal(bp_states_p.WN)
         branch_taken       = Signal(False) #SEÑAL QUE SALE DEL EX
         condition          = Signal(False)
         prediction         = Signal(False)
@@ -77,33 +73,43 @@ def BranchP(clk,
         jump               = Signal(False)                # es un salto incondicional?, jump=1 incondicional, jump=0 condicional
 
         @always_comb
-        def next_state_logic():
+        def next_state_logic_p():
             #LOGICA DE LOS ESTADOS. COMPORTAMIENTO SIMILAR A ICACHE
-            n_state.next = state
+            n_state_p.next = state_p
             #STRONGLY TAKEN
-            if state == bp_states.ST:
+            if state_p == bp_states_p.ST:
                 if branch_taken and (condition==prediction):
-                    n_state.next = bp_states.ST
+                    n_state_p.next = bp_states_p.ST
                 elif branch_taken and not (condition==prediction):
-                    n_state.next = bp_states.WT
+                    n_state_p.next = bp_states_p.WT
             #WEAKLY TAKEN
-            elif state == bp_states.WT:
+            elif state_p == bp_states_p.WT:
                 if branch_taken and (condition==prediction):
-                    n_state.next = bp_states.ST
-                elif branch_taken and not (condition_true==prediction):
-                    n_state.next = bp_states.WN
+                    n_state_p.next = bp_states_p.ST
+                elif branch_taken and not (condition==prediction):
+                    n_state_p.next = bp_states_p.WN
             #WEAKLY NO TAKEN
-            elif state == bp_states.WN:
+            elif state_p == bp_states_p.WN:
                 if branch_taken and (condition==prediction):
-                    n_state.next = bp_states.WT
-                elif branch_taken and not (condition_true==prediction):
-                    n_state.next = bp_states.SN
+                    n_state_p.next = bp_states_p.WT
+                elif branch_taken and not (condition==prediction):
+                    n_state_p.next = bp_states_p.SN
             #STRONGLY NO TAKEN
-            elif state == bp_states.SN:
+            elif state_p == bp_states_p.SN:
                 if branch_taken and (condition==prediction):
-                    n_state.next = bp_states.WN
+                    n_state_p.next = bp_states_p.WN
                 elif branch_taken and not (condition_true==prediction):
-                    n_state.next = bp_states.SN
+                    n_state_p.next = bp_states_p.SN
+
+        @always(clk.posedge)
+        def update_state_p():
+            if rst:
+                state_p.next = bp_states_p.WN #REVISAR SI TIENE QUE SER FLUSH
+            else:
+                state_p.next = n_state_p
+
+
+
 
         return instances()
     else:
