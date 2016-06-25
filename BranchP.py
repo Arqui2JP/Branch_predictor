@@ -98,7 +98,7 @@ def BranchP(clk,
             elif state_p == bp_states_p.SN:
                 if branch_taken and (condition==prediction):
                     n_state_p.next = bp_states_p.WN
-                elif branch_taken and not (condition_true==prediction):
+                elif branch_taken and not (condition==prediction):
                     n_state_p.next = bp_states_p.SN
 
         @always(clk.posedge)
