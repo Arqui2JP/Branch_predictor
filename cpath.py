@@ -222,6 +222,7 @@ class BranchPIO:
     def __init__(self):
         self.valid_branch       = Signal(False)
         self.valid_jump         = Signal(False)
+        self.pc 				= Signal(modbv(0)[32:])
 
 
 class MemDpathIO:
