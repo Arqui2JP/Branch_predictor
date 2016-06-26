@@ -5,12 +5,10 @@ from myhdl import enum
 from myhdl import modbv
 from myhdl import concat
 from myhdl import instances
-#AGREGAR SEÑAL DEL CPATH
 
 def BranchP(clk,
            rst,
-           BranchPIO,
-           pc,
+           BranchPIO,		#se borro la señal pc porque ya se incluye en BranchPIO
            branch,
            invalidate,
            jalr,
@@ -59,7 +57,6 @@ def BranchP(clk,
                            'WT',
                            'WN',
                            'SN')
-
         """
         ESTADOS DEL BP_MACHINE
         """
@@ -68,8 +65,6 @@ def BranchP(clk,
                            'WRITE',
                            'FLUSH',
                            'FLUSH_LAST')
-
-
         """
         INICIALIZACION DE SENALES
         """
@@ -93,7 +88,7 @@ def BranchP(clk,
         valid_bit          = Signal(False)                # Bit de validez. Indica si la instruccion de salto esta en el BTB. (MISS)
         valid_branch       = Signal(False)                # Indica si la instruccion es de tipo branch
         valid_jump         = Signal(False)                # es un salto incondicional?, jump=1 incondicional, jump=0 condicional
-
+		pc				   = Signal(modbv(0)[32:])		  # señal que viene de if_pc
 
         #       ESTRUCTURA INTERNA DEL BTB
         #
@@ -106,7 +101,23 @@ def BranchP(clk,
         #
         #
         #
-
+        
+		@always(clk.posedge)
+		def btb():
+			if rst:
+			
+			else:
+		
+		
+		
+		@always(clk.posedge)
+        def update_state():
+            if rst:
+                state_p.next = bp_states_p.WN 
+				state_m.next = bp_states_m.FLUSH #REVISAR SI TIENE QUE SER FLUSH
+			else:
+                state_p.next = n_state_p
+				state_m.next = n_state_m
 
         @always_comb
         def verify_instruction():
@@ -167,13 +178,10 @@ def BranchP(clk,
             elif state_m == bp_states_m.FLUSH_LAST:
                 #Ultimo FLUSH
                 n_state_m.next = bp_states_m.IDLE
+			
+			
 
-        @always(clk.posedge)
-        def update_state_p():
-            if rst:
-                state_p.next = bp_states_p.WN #REVISAR SI TIENE QUE SER FLUSH
-            else:
-                state_p.next = n_state_p
+
 
         return instances()
     else:
