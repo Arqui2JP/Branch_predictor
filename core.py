@@ -24,9 +24,12 @@ from myhdl import Signal
 from Core.dpath import Datapath
 from Core.cpath import Ctrlpath
 from Core.cpath import CtrlIO
+from Core.cpath import BranchPIO
 from Core.wishbone import WishboneIntercon
 from Core.icache import ICache
 from Core.dcache import DCache
+from Core.branchp import BranchP
+
 
 
 def Core(clk_i,
