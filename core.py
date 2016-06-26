@@ -104,11 +104,19 @@ def Core(clk_i,
                     SET_WIDTH=DC_SET_WIDTH,
                     WAYS=DC_NUM_WAYS,
                     LIMIT_WIDTH=32)
-    branchp = BranchP(
-
-
-
-                                )
+    branchp = BranchP(clk_i,
+					  rst_i,
+					  ctrl_bp,
+					  pc,
+					  branch,
+					  invalidate,
+					  jalr,
+					  ENABLE=BP_ENABLE,
+					  D_WIDTH=32,
+					  BLOCK_WIDTH=BP_BLOCK_WIDTH,
+					  SET_WIDTH=BP_SET_WIDTH,
+					  WAYS=BP_NUM_WAYS,
+					  LIMIT_WIDTH=32)
     #OJO COLOCAR BRANCH PREDICTOR CON PARAMETROS#
 
     return dpath, cpath, icache, dcache
