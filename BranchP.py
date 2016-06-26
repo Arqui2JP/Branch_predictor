@@ -8,7 +8,7 @@ from myhdl import instances
 
 def BranchP(clk,
            rst,
-           BranchPIO,		#se borro la señal pc porque ya se incluye en BranchPIO
+           BranchPIO,       #se borro la señal pc porque ya se incluye en BranchPIO
            branch,
            invalidate,
            jalr,
@@ -43,13 +43,14 @@ def BranchP(clk,
         assert SET_WIDTH > 0, "Error: SET_WIDTH must be a value > 0"
         assert not (WAYS & (WAYS - 1)), "Error: WAYS must be a power of 2"
 
-        # --------------------------------------------------------------------------
+        """
         WAY_WIDTH            = BLOCK_WIDTH + SET_WIDTH  # cache mem_wbm address width
         TAG_WIDTH            = LIMIT_WIDTH - WAY_WIDTH  # tag size
         TAGMEM_WAY_WIDTH     = TAG_WIDTH + 1         # Add the valid bit
         TAGMEM_WAY_VALID     = TAGMEM_WAY_WIDTH - 1  # Valid bit index
         TAG_LRU_WIDTH        = (WAYS * (WAYS - 1)) >> 1  # (N*(N-1))/2
         # --------------------------------------------------------------------------
+        """
         """
         ESTADOS DEL BP_PREDICTOR
         """
@@ -88,36 +89,57 @@ def BranchP(clk,
         valid_bit          = Signal(False)                # Bit de validez. Indica si la instruccion de salto esta en el BTB. (MISS)
         valid_branch       = Signal(False)                # Indica si la instruccion es de tipo branch
         valid_jump         = Signal(False)                # es un salto incondicional?, jump=1 incondicional, jump=0 condicional
-		pc				   = Signal(modbv(0)[32:])		  # señal que viene de if_pc
+        pc                 = Signal(modbv(0)[32:])        # señal que viene de if_pc
 
-        #       ESTRUCTURA INTERNA DEL BTB
+        #                                 
+        #                         ESTRUCTURA INTERNA DEL BTB
         #
+        #        VALID     CONDITIONAL      ADRESS_TARGET      BTB STATE  
+        #        1 bit       1 bit             32 bits          2 bits           
+        #     |          |            |                     |            |
+        #     |          |            |                     |            | 
+        #     |          |            |                     |            | 
+        #     - 35    35 - 34      34 - 33                2 - 1        0 -    
         #
-        #        TAG         ADRESS_TARGET      
-        #
-        #      32 bits         32 bits
-        #
-        #
-        #
-        #
-        #
+        # --------------------------------------------------------------------------
+
+        LINE_LENGTH         = 36
+        SET_NUMBER          = 64
+        ADDRESS_WIDTH       = 32
+        WAY_WIDTH           = 2 + 6                     # BLOCK_WIDTH + SET_WIDTH (2+6)
+
+        TAG_WIDTH           = 26                        # Tamaño del TAG, un poco menor al tamaño total del pc   
+        WAYS                = 2
+
+        address_target      = Signal(modbv(0)[ADDRESS_WIDTH:0])
+        position_hit        = 0
+            
+        #Inicializacion de la cache
+        for i in range(0,SET_NUMBER)
+            direction[i] = Signal(modbv(0)[LINE_LENGTH:0]
+
+        @always_comb
+        def miss_check():
+            for i in range(0, SET_NUMBER):
+                if  (address_target[32:] == direction[i][33:2])
+                    valid_bit.next = True
+                    position_hit = i
+
+        @always(clk.posedge)
+        def btb():
+            if rst:
+            
+            else:
         
-		@always(clk.posedge)
-		def btb():
-			if rst:
-			
-			else:
-		
-		
-		
-		@always(clk.posedge)
+        
+        @always(clk.posedge)
         def update_state():
             if rst:
                 state_p.next = bp_states_p.WN 
-				state_m.next = bp_states_m.FLUSH #REVISAR SI TIENE QUE SER FLUSH
-			else:
+                state_m.next = bp_states_m.FLUSH #REVISAR SI TIENE QUE SER FLUSH
+            else:
                 state_p.next = n_state_p
-				state_m.next = n_state_m
+                state_m.next = n_state_m
 
         @always_comb
         def verify_instruction():
@@ -178,8 +200,8 @@ def BranchP(clk,
             elif state_m == bp_states_m.FLUSH_LAST:
                 #Ultimo FLUSH
                 n_state_m.next = bp_states_m.IDLE
-			
-			
+            
+            
 
 
 
