@@ -5,6 +5,21 @@ from myhdl import enum
 from myhdl import modbv
 from myhdl import concat
 from myhdl import instances
+##Entradas
+#id_pc 
+
+class BranchPIO()
+	def __init__(self):
+        self.valid_branch       = Signal(False)
+        self.valid_jump         = Signal(False)
+        self.pc 				= Signal(modbv(0)[32:])
+		#Cambio se;ales de io
+		self.                   = id_pc 			#dpath
+		self.                   = id_pc_brjmp		#dpath
+		self.                   = if_pc  #dpath
+		self.                   = if_instruction #dpath 
+		self.predict            = #Bits correspondientes a estado maquina de estado(hacia el control)
+		#Fin cambio
 
 def BranchP(clk,
            rst,
@@ -84,26 +99,26 @@ def BranchP(clk,
 
 
         #SEÑALES DEL Branch Target Address Cache 
-        tag                = Signal(modbv(0)[TAG_WIDTH:]) # se utilizara if_pc como etiqueta, REVISAR TAMAÑO
+        tag_pc             = Signal(modbv(0)[TAG_WIDTH:]) # se utilizara if_pc como etiqueta, REVISAR TAMAÑO
         adress_target      = Signal(modbv(0)[D_WIDTH:])   # direccion de salto, REVISAR TAMAÑO
         valid_bit          = Signal(False)                # Bit de validez. Indica si la instruccion de salto esta en el BTB. (MISS)
         valid_branch       = Signal(False)                # Indica si la instruccion es de tipo branch
         valid_jump         = Signal(False)                # es un salto incondicional?, jump=1 incondicional, jump=0 condicional
         pc                 = Signal(modbv(0)[32:])        # señal que viene de if_pc
-
+#Cambio tama;o de registro
         #                                 
         #                         ESTRUCTURA INTERNA DEL BTB
         #
-        #        VALID     CONDITIONAL      ADRESS_TARGET      BTB STATE  
-        #        1 bit       1 bit             32 bits          2 bits           
-        #     |          |            |                     |            |
-        #     |          |            |                     |            | 
-        #     |          |            |                     |            | 
-        #     - 35    35 - 34      34 - 33                2 - 1        0 -    
+        #        VALID     CONDITIONAL          TAG            ADRESS_TARGET      BTB STATE  
+        #        1 bit       1 bit            32 bits              32 bits          2 bits           
+        #     |          |            |                     |                 |            |
+        #     |          |            |                     |                 |            | 
+        #     |          |            |                     |                 |            | 
+        #     -67    67 - 66        66-65                 34 - 33            2 - 1        0 -    
         #
         # --------------------------------------------------------------------------
 
-        LINE_LENGTH         = 36
+        LINE_LENGTH         = 68
         SET_NUMBER          = 64
         ADDRESS_WIDTH       = 32
         WAY_WIDTH           = 2 + 6                     # BLOCK_WIDTH + SET_WIDTH (2+6)
@@ -111,17 +126,19 @@ def BranchP(clk,
         TAG_WIDTH           = 26                        # Tamaño del TAG, un poco menor al tamaño total del pc   
         WAYS                = 2
 
-        address_target      = Signal(modbv(0)[ADDRESS_WIDTH:0])
         position_hit        = 0
-            
-        #Inicializacion de la cache
+#Fin de cambio
+
+		@always_comb
+        def assignments():
+        #Inicializacion del BTB
         for i in range(0,SET_NUMBER)
-            direction[i] = Signal(modbv(0)[LINE_LENGTH:0]
+            direction[i] = Signal(modbv(0)[LINE_LENGTH:0])
 
         @always_comb
-        def miss_check():
+        def miss_check():		#
             for i in range(0, SET_NUMBER):
-                if  (address_target[32:] == direction[i][33:2])
+                if  (tag_pc[32:] == direction[i][65:34])
                     valid_bit.next = True
                     position_hit = i
 
@@ -140,11 +157,16 @@ def BranchP(clk,
             else:
                 state_p.next = n_state_p
                 state_m.next = n_state_m
-
+#Se cambio consistente con el cambio de tama;o de registro
         @always_comb
         def verify_instruction():
-            
-
+			if state_m == bp_states_m.WRITE:
+				direction[i][65:34] = tag_pc[32:]
+				#blablablablalbala
+			elif state_m == bp_states_m.READ:
+				direction[position_hit][65:34] = tag_pc[32:]
+				
+#Fin de cambio
 
 
         @always_comb
@@ -201,12 +223,13 @@ def BranchP(clk,
                 #Ultimo FLUSH
                 n_state_m.next = bp_states_m.IDLE
             
-            
 
+		
 
 
         return instances()
     else:
+		a_pc.next=a_pc
         return instances()
 
 # End:
