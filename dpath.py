@@ -44,10 +44,10 @@ from Core.mux import Mux2
 def Datapath(clk,
              rst,
              ctrlIO,
+			 ctrlBP,
              toHost):
     """
     A 5-stage data path with data forwarding.
-
     :param clk:    System clock
     :param rst:    System reset
     :param ctrlIO: IO bundle. Interface with the cpath module
@@ -117,22 +117,28 @@ def Datapath(clk,
 
     # A stage
     # ----------------------------------------------------------------------
-    pc_mux = Mux4(ctrlIO.pc_select,  # noqa
+    pc_mux_nobp = Mux4(ctrlIO.pc_select1,  # noqa
                   if_pc_next,
                   id_pc_brjmp,
                   id_pc_jalr,
                   exc_pc,
                   nobtb_pc)
 				  #Cambio
-    pc_muxbtb=Mux4(ctrlIO.btbmaquina,
-	               id_npc,)
-	mux_pc_mux_enable_general_definitivo_hodor=Mux4(ctrlIO.Btb_enable,  #Cambiar nombre a nombre mas serio
-	                                                nobtb_pc,
-              										btb_pc,
-													exc_pc,
-													0x00000BAD
-													a_pc)
-                   #Cambio
+				  
+    pc_mux_bp=Mux4(ctrlIO.pc_select2,	#BTB selector
+	              if_pc_next,		
+				  id_pc_brjmp, 		#Hay que ver como se agrega el jump pero ese puede ser otro mux antes de dos entradas. Pero primero intentemos con el branch
+				  id_pc_next,
+				  ctrlBP.btb_npc,
+				  btb_pc)
+	
+	mux_pc = Mux4(ctrlIO.pc_select3,  #Selector 
+	              nobtb_pc,
+				  btb_pc,
+				  0x00000BAD,
+				  exc_pc,
+				  a_pc)
+                  #Cambio
     # IF stage
     # ----------------------------------------------------------------------
     @always(clk.posedge)
@@ -145,6 +151,7 @@ def Datapath(clk,
 
     @always_comb
     def _pc_next():
+
         ctrlIO.imem_pipeline.addr.next  = if_pc
         if_pc_next.next                 = if_pc + 4
         if_instruction.next             = ctrlIO.imem_pipeline.rdata
@@ -152,6 +159,10 @@ def Datapath(clk,
         ctrlIO.imem_pipeline.typ.next   = Consts.MT_W
         ctrlIO.imem_pipeline.fcn.next   = Consts.M_RD
         ctrlIO.imem_pipeline.valid.next = True
+		
+	@always_comb
+    def _pc_next1():
+		ctrlBP.pc_if.next				= if_pc
 
     # ID stage
     # ----------------------------------------------------------------------
@@ -226,6 +237,13 @@ def Datapath(clk,
         ctrlIO.id_op1.next             = id_op1
         ctrlIO.id_op2.next             = id_op2
 
+	@always_comb		#Assignment for BTB NO SE SI DEBERIAN SER .NEXT las variable que estamos asignando
+    def _id_assignment1():
+		ctrlBP.pc_if.next				= id_pc
+		ctrlBP.pc_id_brjmp.next			= id_pc_brjmp
+		#ctrlBP.pc_id_jalr.next			= id_pc_jalr	Podemos trabajar con el jal despues
+		id_pc_next.next					= if_pc_next	#Valor siguiente a proxima instruccion en etapa id
+		
     # EX stage
     # ----------------------------------------------------------------------
     @always(clk.posedge)
