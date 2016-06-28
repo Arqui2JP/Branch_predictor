@@ -8,22 +8,26 @@ from myhdl import instances
 ##Entradas
 #id_pc 
 
+
 class BranchPIO()
 	def __init__(self):
-        self.valid_branch       = Signal(False)
-        self.valid_jump         = Signal(False)
-        self.pc 				= Signal(modbv(0)[32:])
+		self.enable				= Signal(False)			#Va al cpath
+        self.valid_branch       = Signal(False)			#viene del cpath
+        self.valid_jump         = Signal(False)			#viene del cpath
+        self.pc 				= 	#Creo que es innecesaria 
 		#Cambio se;ales de io
-		self.                   = id_pc 			#dpath
-		self.                   = id_pc_brjmp		#dpath
-		self.                   = if_pc  #dpath
-		self.                   = if_instruction #dpath 
-		self.predict            = #Bits correspondientes a estado maquina de estado(hacia el control)
+		self.pc_if              = Signal(modbv(0)[32:])		#viene del dpath
+		self.pc_id              = Signal(modbv(0)[32:])		#viene del dpath
+		self.pc_id_brjmp        = Signal(modbv(0)[32:])		#viene del dpath
+		self.pc_id_jalr         = Signal(modbv(0)[32:])
+		self					= if_instruction #dpath 		#No se para que era esto
+		self.predict            = #Bits correspondientes a estado maquina de estado(hacia el control)	Tampoco me acuerdo para que era esto :)
+		self.btb_npc			= Signal(modbv(0)[32:])		#Va al dpath. Salida del btb- entrada al multiplexor
 		#Fin cambio
 
 def BranchP(clk,
            rst,
-           BranchPIO,       #se borro la señal pc porque ya se incluye en BranchPIO
+           BPio,       #se borro la señal pc porque ya se incluye en BranchPIO
            branch,
            invalidate,
            jalr,
@@ -49,6 +53,11 @@ def BranchP(clk,
     :param WAYS:        Number of ways for associative cache (Minimum: 2)
     :param LIMIT_WIDTH: Maximum width for address
     """
+	
+	#Revisar si esto se puede hacer
+	BPio.enable = ENABLE
+	
+	
     if ENABLE:
         """
         PARAMETROS QUE TENDRA EL BP INTERNAMENTE. MODIFICAR
@@ -91,7 +100,7 @@ def BranchP(clk,
         state_m            = Signal(bp_states_m.IDLE)
         n_state_m          = Signal(bp_states_m.IDLE)
 
-        branch_taken       = Signal(False) #SEÑAL QUE SALE DEL EX
+        branch_taken       = Signal(False) #SEÑAL QUE SALE DEL EX 	
         condition          = Signal(False)
         prediction         = Signal(False)
         final_write        = Signal(False)
