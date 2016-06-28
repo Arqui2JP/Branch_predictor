@@ -50,7 +50,6 @@ N = False
 class CtrlSignals:
     """
     Vectorizes the datapath control signal.
-
     ISA: RV32IM + priviledge instructions v1.7
     """
     # Control signals
@@ -132,7 +131,6 @@ class CtrlSignals:
 class CtrlIO:
     """
     IO interface between the cpath and the dpath.
-
     :ivar id_instruction:     Intruction at ID stage
     :ivar if_kill:            Kill the IF stage
     :ivar id_stall:           Stall the ID stage
@@ -182,7 +180,9 @@ class CtrlIO:
         self.id_kill            = Signal(False)
         self.full_stall         = Signal(False)
         self.pipeline_kill      = Signal(False)
-        self.pc_select          = Signal(modbv(0)[Consts.SZ_PC_SEL:])
+        self.pc_select1         = Signal(modbv(0)[Consts.SZ_PC_SEL:])	#PC selector for original mux_pc
+		self.pc_select2         = Signal(modbv(0)[Consts.SZ_PC_SEL:])	#PC selector for BTB 
+		self.pc_select3         = Signal(modbv(0)[Consts.SZ_PC_SEL:])	#PC selector between pc_select1 and pc_select2
         self.id_next_pc         = Signal(modbv(0)[32:])
         self.id_op1_select      = Signal(modbv(0)[Consts.SZ_OP1:])
         self.id_op2_select      = Signal(modbv(0)[Consts.SZ_OP2:])
@@ -218,17 +218,11 @@ class CtrlIO:
         self.imem_pipeline      = MemDpathIO()
         self.dmem_pipeline      = MemDpathIO()
 
-class BranchPIO:
-    def __init__(self):
-        self.valid_branch       = Signal(False)
-        self.valid_jump         = Signal(False)
-        self.pc 				= Signal(modbv(0)[32:])
 
 
 class MemDpathIO:
     """
     Interface for memory accesses from dpath
-
     :ivar addr:  Memory address
     :ivar wdata: Write data
     :ivar typ:   Data ype: byte, half-word, word
@@ -255,7 +249,6 @@ def Ctrlpath(clk,
              bp): #Se agrego bp
     """
     The decoder, exception, hazard detection, and control unit.
-
     :param clk:          Main clock
     :param rst:          Main reset
     :param io:           Interface with dapath
@@ -489,7 +482,6 @@ def Ctrlpath(clk,
     def _assignments():
         """
         Individual assignment of control signals.
-
         Each signal correspond to a slice in the vectored control signal (check CtrlSignals class).
         'id_csr_cmd' signal: This signal depends if the control is a CSR_IDLE command.
         If it is an CSR_IDLE command, we need to check 'id_rs1_addr': in case of being equal to zero, the
@@ -532,7 +524,6 @@ def Ctrlpath(clk,
     def _mem_exception_check():
         """
         Check for memory related exceptions.
-
         Exceptions:
         - E_INST_ADDR_MISALIGNED
         - E_INST_ACCESS_FAULT
@@ -575,13 +566,11 @@ def Ctrlpath(clk,
     def _idex_register():
         """
         Internal pipeline register: ID->EX
-
         Register the exceptions signals generated in ID stage: IF + ID exceptions.
         ID exceptions:
         - E_ILLEGAL_INST
         - E_BREAKPOINT
         - Interrupts: software and timer.
-
         In case of multiple exceptions (the instruction generated an exception at IF, and then at ID),
         blame IF. The priority of exceptions with origin in IF (or ID) is arbitrary.
         """
@@ -678,8 +667,8 @@ def Ctrlpath(clk,
         id_ltu.next = io.id_op1 < io.id_op2
 
     @always_comb
-    def _pc_select():
-        io.pc_select.next = (modbv(Consts.PC_EXC)[Consts.SZ_PC_SEL:] if io.csr_exception or io.csr_eret else
+    def _pc_select1():
+        io.pc_select1.next = (modbv(Consts.PC_EXC)[Consts.SZ_PC_SEL:] if io.csr_exception or io.csr_eret else
                                   (modbv(Consts.PC_BRJMP)[Consts.SZ_PC_SEL:] if ((id_br_type == Consts.BR_J) or
                                                                                  (id_br_type == Consts.BR_NE and not id_eq) or
                                                                                  (id_br_type == Consts.BR_EQ and id_eq) or
@@ -689,6 +678,26 @@ def Ctrlpath(clk,
                                                                                  (id_br_type == Consts.BR_GEU and not id_ltu)) else
                                    (modbv(Consts.PC_JALR)[Consts.SZ_PC_SEL:] if id_br_type == Consts.BR_JR else
                                     (modbv(Consts.PC_4)[Consts.SZ_PC_SEL:]))))
+
+    @always_comb	##HAY QUE ACOMODAR
+    def _pc_select2():
+        io.pc_select2.next = (modbv(Consts.BTB_NPC)[Consts.SZ_PC_SEL:] if #Insertar condicion else
+                                  (modbv(Consts.PC_BRJMP)[Consts.SZ_PC_SEL:] if ((id_br_type == Consts.BR_J) or
+                                                                                 (id_br_type == Consts.BR_NE and not id_eq) or
+                                                                                 (id_br_type == Consts.BR_EQ and id_eq) or
+                                                                                 (id_br_type == Consts.BR_LT and id_lt) or
+                                                                                 (id_br_type == Consts.BR_LTU and id_ltu) or
+                                                                                 (id_br_type == Consts.BR_GE and not id_lt) or
+                                                                                 (id_br_type == Consts.BR_GEU and not id_ltu)) else
+                                   (modbv(Consts.PC_ID)[Consts.SZ_PC_SEL:] if #insertar condicion else
+                                    (modbv(Consts.PC_4)[Consts.SZ_PC_SEL:]))))
+			
+			
+    @always_comb		#Mux entre los pc si hay o no hay Branch Predictor
+    def _pc_select3():
+        io.pc_select3.next = (modbv(Consts.PC_EXC)[Consts.SZ_PC_SEL:] if io.csr_exception or io.csr_eret else
+                                  (modbv(Consts.PC_BTB)[Consts.SZ_PC_SEL:] if (bp.enable == TRUE) else
+                                   (modbv(Consts.PC_NBTB)[Consts.SZ_PC_SEL:] if bp.enable == FALSE)))
 
     @always_comb
     def _fwd_ctrl():
