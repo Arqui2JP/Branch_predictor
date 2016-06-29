@@ -23,6 +23,7 @@ class BranchPIO()
 		self					= if_instruction #dpath 		#No se para que era esto
 		self.predict            = #Bits correspondientes a estado maquina de estado(hacia el control)	Tampoco me acuerdo para que era esto :)
 		self.btb_npc			= Signal(modbv(0)[32:])		#Va al dpath. Salida del btb- entrada al multiplexor
+		self.branch_taken       = Signal(False) #SEÑAL QUE SALE DE ID HAY QUE CONECTARLA	
 		#Fin cambio
 
 def BranchP(clk,
@@ -100,7 +101,7 @@ def BranchP(clk,
         state_m            = Signal(bp_states_m.IDLE)
         n_state_m          = Signal(bp_states_m.IDLE)
 
-        branch_taken       = Signal(False) #SEÑAL QUE SALE DEL EX 	
+        
         condition          = Signal(False)
         prediction         = Signal(False)
         final_write        = Signal(False)
@@ -111,9 +112,8 @@ def BranchP(clk,
         tag_pc             = Signal(modbv(0)[TAG_WIDTH:]) # se utilizara if_pc como etiqueta, REVISAR TAMAÑO
         adress_target      = Signal(modbv(0)[D_WIDTH:])   # direccion de salto, REVISAR TAMAÑO
         valid_bit          = Signal(False)                # Bit de validez. Indica si la instruccion de salto esta en el BTB. (MISS)
-        valid_branch       = Signal(False)                # Indica si la instruccion es de tipo branch
-        valid_jump         = Signal(False)                # es un salto incondicional?, jump=1 incondicional, jump=0 condicional
-        pc                 = Signal(modbv(0)[32:])        # señal que viene de if_pc
+        
+		
 #Cambio tama;o de registro
         #                                 
         #                         ESTRUCTURA INTERNA DEL BTB
@@ -173,7 +173,13 @@ def BranchP(clk,
 				direction[i][65:34] = tag_pc[32:]
 				#blablablablalbala
 			elif state_m == bp_states_m.READ:
-				direction[position_hit][65:34] = tag_pc[32:]
+				BPio.btb_npc.next = direction[position_hit][33:2]
+				if BPio.branch_taken == True
+					#ACTUALIZAR PREDICTOR
+				else
+					#Flush etapada if. actualizar predictor. busqueda de instruccion
+					
+					
 				
 #Fin de cambio
 
