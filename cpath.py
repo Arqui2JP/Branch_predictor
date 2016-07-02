@@ -181,8 +181,8 @@ class CtrlIO:
         self.full_stall         = Signal(False)
         self.pipeline_kill      = Signal(False)
         self.pc_select1         = Signal(modbv(0)[Consts.SZ_PC_SEL:])	#PC selector for original mux_pc
-		self.pc_select2         = Signal(modbv(0)[Consts.SZ_PC_SEL:])	#PC selector for BTB 
-		self.pc_select3         = Signal(modbv(0)[Consts.SZ_PC_SEL:])	#PC selector between pc_select1 and pc_select2
+	self.pc_select2         = Signal(modbv(0)[Consts.SZ_PC_SEL:])	#PC selector for BTB 
+	self.pc_select3         = Signal(modbv(0)[Consts.SZ_PC_SEL:])	#PC selector between pc_select1 and pc_select2
         self.id_next_pc         = Signal(modbv(0)[32:])
         self.id_op1_select      = Signal(modbv(0)[Consts.SZ_OP1:])
         self.id_op2_select      = Signal(modbv(0)[Consts.SZ_OP2:])
