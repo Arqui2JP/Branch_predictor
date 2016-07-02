@@ -14,7 +14,7 @@ class BranchPIO()
 		self.enable		= Signal(False)			#Va al cpath
         	self.valid_branch       = Signal(False)			#viene del cpath
         	self.valid_jump         = Signal(False)			#viene del cpath
-		self.pc 		= 	#Creo que es innecesaria 
+		#self.pc 		= 	#Creo que es innecesaria 
 		#Cambio señales de io
 		self.pc_if              = Signal(modbv(0)[32:])		#viene del dpath
 		self.pc_id              = Signal(modbv(0)[32:])		#viene del dpath
@@ -33,11 +33,8 @@ def BranchP(clk,
            invalidate,
            jalr,
            ENABLE=True,
-           D_WIDTH=32,
-           BLOCK_WIDTH=5,
-           SET_WIDTH=9,
-           WAYS=2,
-           LIMIT_WIDTH=32):
+           BLOCK_WIDTH=1,
+           WAYS):
     """
     The Branch Predictor module.
     :param clk:         System clock
