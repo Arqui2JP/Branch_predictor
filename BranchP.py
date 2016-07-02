@@ -11,18 +11,18 @@ from myhdl import instances
 
 class BranchPIO()
 	def __init__(self):
-		self.enable				= Signal(False)			#Va al cpath
-        self.valid_branch       = Signal(False)			#viene del cpath
-        self.valid_jump         = Signal(False)			#viene del cpath
-        self.pc 				= 	#Creo que es innecesaria 
-		#Cambio se;ales de io
+		self.enable		= Signal(False)			#Va al cpath
+        	self.valid_branch       = Signal(False)			#viene del cpath
+        	self.valid_jump         = Signal(False)			#viene del cpath
+		self.pc 		= 	#Creo que es innecesaria 
+		#Cambio señales de io
 		self.pc_if              = Signal(modbv(0)[32:])		#viene del dpath
 		self.pc_id              = Signal(modbv(0)[32:])		#viene del dpath
 		self.pc_id_brjmp        = Signal(modbv(0)[32:])		#viene del dpath
 		self.pc_id_jalr         = Signal(modbv(0)[32:])
-		self					= if_instruction #dpath 		#No se para que era esto
-		self.predict            = #Bits correspondientes a estado maquina de estado(hacia el control)	Tampoco me acuerdo para que era esto :)
-		self.btb_npc			= Signal(modbv(0)[32:])		#Va al dpath. Salida del btb- entrada al multiplexor
+		#self			= if_instruction #dpath 		#No se para que era esto
+		self.predict            = Signal(modbv(0)[2:0]) #Bits correspondientes a estado maquina de estado(hacia el control)	Tampoco me acuerdo para que era esto :)
+		self.btb_npc		= Signal(modbv(0)[32:])		#Va al dpath. Salida del btb- entrada al multiplexor
 		self.branch_taken       = Signal(False) #SEÑAL QUE SALE DE ID HAY QUE CONECTARLA	
 		#Fin cambio
 
