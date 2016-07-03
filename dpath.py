@@ -39,6 +39,7 @@ from Core.csr import CSRAddressMap
 from Core.imm_gen import IMMGen
 from Core.mux import Mux4
 from Core.mux import Mux2
+from Core.BranchP import BranchP
 
 
 def Datapath(clk,
@@ -122,11 +123,14 @@ def Datapath(clk,
 
         branchp = BranchP(clk_i,
                           rst_i,
-                          ctrl_bp,
-                          pc,
-                          branch,
-                          invalidate,
-                          jalr)
+                          ctrl_bp)
+        """
+        The Branch Predictor module.
+        :param clk:         System clock
+        :param rst:         System reset
+        :param BPio:        IO bundle. Interface with the dpath and cpath modules
+        """
+        
         # A stage
         # ----------------------------------------------------------------------
         pc_mux_bp=Mux4(ctrlIO.pc_select2,   #BTB selector
