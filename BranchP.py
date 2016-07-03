@@ -114,6 +114,10 @@ def BranchP(clk,
         ####################
         current_state      = Signal(modbv(0)[2:])         # OJO- SE;AL QUE DEBE IR A CONTROL
         ####################
+        #SENAL CORRESPONDIENTE A LA ALEATORIEDAD
+        random 				= Signal(modbv(4, min=0, max = SET_NUMBER)) 
+
+        #
 #Cambio tama;o de registro
         #                                 
         #                         ESTRUCTURA INTERNA DEL BTB
@@ -137,6 +141,14 @@ def BranchP(clk,
 
         
 #Fin de cambio
+
+
+		@always(clk.posedge)
+		def random_change():
+		#Randomness Generator 
+			random.next = random ^ (random << 2)
+
+
 
         @always_comb
         def assignments():
