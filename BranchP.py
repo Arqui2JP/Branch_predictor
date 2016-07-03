@@ -35,8 +35,7 @@ def BranchP(clk,
            BPio,       #se borro la señal pc porque ya se incluye en BranchPIO
            branch,
            invalidate,
-           jalr,
-           ENABLE): #SOPHIA REVISA ESTOOOO! ctrlIO va? Agregamos una señal que sale del cpath (señal:current_state)!!!
+           jalr): #SOPHIA REVISA ESTOOOO! ctrlIO va? Agregamos una señal que sale del cpath (señal:current_state)!!!
     """
     The Branch Predictor module.
     :param clk:         System clock
