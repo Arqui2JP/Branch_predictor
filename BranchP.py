@@ -25,7 +25,7 @@ class BranchPIO()
         #self           = if_instruction #dpath         #No se para que era esto
         self.predict            = Signal(modbv(0)[2:0]) #Bits correspondientes a estado maquina de estado(hacia el control) Tampoco me acuerdo para que era esto :)
         self.btb_npc            = Signal(modbv(0)[32:])     #Va al dpath. Salida del btb- entrada al multiplexor
-        self.branch_taken       = Signal(False) #SEÑAL QUE SALE DE ID HAY QUE CONECTARLA    
+        self.branch_taken       = Signal(False)             #SEÑAL QUE SALE DE ID HAY QUE CONECTARLA    
         self.current_state      = Signal(modbv(0)[1:0])
         self.change_state       = Signal(modbv(0)[2:0])
         #Fin cambio
@@ -36,7 +36,7 @@ def BranchP(clk,
            branch,
            invalidate,
            jalr,
-           ENABLE): #SOPHIA REVISA ESTOOOO! ctrlIO va? Agregamos una señal que sale del cpath (señal:cambio_estado)!!!
+           ENABLE): #SOPHIA REVISA ESTOOOO! ctrlIO va? Agregamos una señal que sale del cpath (señal:current_state)!!!
     """
     The Branch Predictor module.
     :param clk:         System clock
@@ -62,8 +62,8 @@ def BranchP(clk,
     """
     bp_states_m = enum('IDLE',
                        'READ',
-                       'WRITE',
-
+                       'WRITE1',
+                       'WRITE2',
                        'FLUSH',
                        'FLUSH_LAST')
     """
@@ -81,8 +81,8 @@ def BranchP(clk,
     prediction         = Signal(False)
     final_write        = Signal(False)
     final_flush        = Signal(False)
-    final_miss         = Signal(False)
-
+    hit                = Signal(False)
+    index_btb          = Signal(modbv(0)[6:0])
     #SEÑALES DEL Branch Target Address Cache 
     tag_pc             = Signal(modbv(0)[TAG_WIDTH:]) # se utilizara if_pc como etiqueta, REVISAR TAMAÑO
     adress_target      = Signal(modbv(0)[D_WIDTH:])   # direccion de salto, REVISAR TAMAÑO
@@ -121,25 +121,32 @@ def BranchP(clk,
         random.next = random ^ (random << 2)
 #Fin de cambio
 
-    @always_comb
+    @always(clk.posedge)
     def assignments():
     #Inicializacion del BTB
         if rst:
-            position_hit       = -1
-            for i in range(0,SET_NUMBER)
+            for i in range(0,SET_NUMBER):
                 btb_line[i].next = Signal(modbv(0)[LINE_LENGTH:0])
 
     @always_comb
     def miss_check():
-        for i in range(0, SET_NUMBER):
-            if  (tag_pc[32:2] == btb_line[i][63:32])
-                valid_bit.next      = True
-                position_hit.next   = i
-                state_m.next        = bp_states_m.READ
-                final_miss.next     = 1
-        if (position_hit < 0) and final_miss
-                state_m.next        = bp_states_m.WRITE
-                final_miss.next     = 0
+        if state_m == bp_states_m.READ:
+            for i in range(0, SET_NUMBER):
+                if  (tag_pc[32:2] == btb_line[i][61:32])
+
+                    valid_bit.next      = True
+                    index_btb.next      = modbv(i)[6:]
+            
+                    #LECTURA INMEDIATA
+                    BPio.btb_npc.next       = concat(btb_line[i][31:2], Signal(modbv(0)[1:]))
+                    BPio.current_state.next = btb_line[i][1:]
+
+                    hit.next            = True
+                    state_m.next        = bp_states_m.WRITE2
+
+                if (i==SET_NUMBER) and not hit:
+                    state_m.next        = bp_states_m.WRITE1
+                    hit.next     = False
 
 
     @always(clk.posedge)
@@ -160,51 +167,55 @@ def BranchP(clk,
 #Se cambio consistente con el cambio de tamaño de registro
     @always_comb
     def write_process1():
-        if state_m == bp_states_m.WRITE:
-            index_r = random.unsigned
-            btb_line[index_r][67].next        = True
-            btb_line[index_r][65:34].next     = tag_pc[32:2]
-            if bp.valid_jump
-                btb_line[index_r][66].next    = True
-                btb_line[index_r][33:2].next  = pc_id_brjmp
-            if bp.valid_branch
-                btb_line[index_r][66].next    = False
-                btb_line[index_r][33:2].next  = pc_id_brjmp
-            if bp_states_p == bp_states_p.ST
+        if state_m == bp_states_m.WRITE1:
+            index_r                           = random.unsigned
+            index_btb.next                    = modbv(index_r)[6:]
+            btb_line[index_r][63].next        = True
+            btb_line[index_r][61:32].next     = tag_pc[32:2]
+            btb_line[index_r][31:2].next      = pc_id_brjmp
+
+            if bp.valid_jump:
+                btb_line[index_r][62].next    = True
+            if bp.valid_branch:
+                btb_line[index_r][62].next    = False
+
+            if bp_states_p == bp_states_p.ST:
                 btb_line[index_r][1:0].next   = 11
                 current_state.next            = 11
-            if bp_states_p == bp_states_p.WT
+            if bp_states_p == bp_states_p.WT:
                 btb_line[index_r][1:0].next   = 10
                 current_state.next            = 10
-            if bp_states_p == bp_states_p.WN
+            if bp_states_p == bp_states_p.WN:
                 btb_line[index_r][1:0].next   = 01
                 current_state.next            = 01
-            if bp_states_p == bp_states_p.SN
+            if bp_states_p == bp_states_p.SN:
                 btb_line[index_r][1:0].next   = 00
                 current_state.next            = 00
 
-            final_write.next            = True
+            final_write.next                  = True
             #blablablablabla
 
-            if BPio.branch_taken == True
+        if BPio.branch_taken == True:
+            BPio.branch_taken = False
+
                 #ACTUALIZAR PREDICTOR
-            else
+        else:
 
                 #Flush etapada if. actualizar predictor. busqueda de instruccion
     @always_comb
-    def read_process():
-        if state_m == bp_states_m.READ:
-            BPio.btb_npc.next       = concat(btb_line[position_hit][31:2], Signal(modbv(0)[1:]))
-            position_hit.next       = -1
-            current_state.next      = btb_line[position_hit][1:]
-    
+    def write_process2():
+
+
+
+
+
     @always_comb
     def flush_process():
 
 
     @always_comb
     def last_flush_process():
-        
+
 
 
 
@@ -216,38 +227,37 @@ def BranchP(clk,
         n_state_p.next = state_p
         #STRONGLY TAKEN
         if state_p == bp_states_p.ST:
-            if branch_taken and cambio_estado:
+            if branch_taken and current_state:
                 n_state_p.next = bp_states_p.ST
-            elif branch_taken and not cambio_estado:
+
+            elif branch_taken and not current_state:
                 n_state_p.next = bp_states_p.WT
         #WEAKLY TAKEN
         elif state_p == bp_states_p.WT:
-            if branch_taken and cambio_estado:
+            if branch_taken and current_state:
                 n_state_p.next = bp_states_p.ST
-            elif branch_taken and not cambio_estado:
+            elif branch_taken and not current_state:
                 n_state_p.next = bp_states_p.WN
         #WEAKLY NO TAKEN
         elif state_p == bp_states_p.WN:
-            if branch_taken and cambio_estado:
+            if branch_taken and current_state:
                 n_state_p.next = bp_states_p.WT
-            elif branch_taken and not cambio_estado:
+            elif branch_taken and not current_state:
                 n_state_p.next = bp_states_p.SN
         #STRONGLY NO TAKEN
         elif state_p == bp_states_p.SN:
-            if branch_taken and cambio_estado:
+            if branch_taken and current_state:
                 n_state_p.next = bp_states_p.WN
-            elif branch_taken and not cambio_estado:
+            elif branch_taken and not current_state:
                 n_state_p.next = bp_states_p.SN
 
     @always_comb
     def next_state_logic_m(): #MAQUINA DE ESTADOS
         n_state_m.next = state_m
         if state_m == bp_states_m.IDLE:
-            if not valid_bit and valid_branch:
-                n_state_m.next = bp_states_m.WRITE
-            elif valid_bit and valid_branch:
+            if valid_branch or valid_jump:
                 n_state_m.next = bp_states_m.READ
-        elif state_m == bp_states_m.WRITE:
+        elif state_m == bp_states_m.WRITE1:
             if final_write:
                 n_state_m.next = bp_states_m.IDLE
                 final_write    = False
