@@ -180,9 +180,9 @@ class CtrlIO:
         self.id_kill            = Signal(False)
         self.full_stall         = Signal(False)
         self.pipeline_kill      = Signal(False)
-        self.pc_select1         = Signal(modbv(0)[Consts.SZ_PC_SEL:])	#PC selector for original mux_pc
-	self.pc_select2         = Signal(modbv(0)[Consts.SZ_PC_SEL:])	#PC selector for BTB 
-	self.pc_select3         = Signal(modbv(0)[Consts.SZ_PC_SEL:])	#PC selector between pc_select1 and pc_select2
+        self.pc_select1         = Signal(modbv(0)[Consts.SZ_PC_SEL:])   #PC selector for original mux_pc
+    self.pc_select2         = Signal(modbv(0)[Consts.SZ_PC_SEL:])   #PC selector for BTB 
+    self.pc_select3         = Signal(modbv(0)[Consts.SZ_PC_SEL:])   #PC selector between pc_select1 and pc_select2
         self.id_next_pc         = Signal(modbv(0)[32:])
         self.id_op1_select      = Signal(modbv(0)[Consts.SZ_OP1:])
         self.id_op2_select      = Signal(modbv(0)[Consts.SZ_OP2:])
@@ -218,6 +218,7 @@ class CtrlIO:
         self.imem_pipeline      = MemDpathIO()
         self.dmem_pipeline      = MemDpathIO()
 
+        self.cambio_estado      = Signal(False)
 
 
 class MemDpathIO:
@@ -679,25 +680,51 @@ def Ctrlpath(clk,
                                    (modbv(Consts.PC_JALR)[Consts.SZ_PC_SEL:] if id_br_type == Consts.BR_JR else
                                     (modbv(Consts.PC_4)[Consts.SZ_PC_SEL:]))))
 
-    @always_comb	##HAY QUE ACOMODAR
-    def _pc_select2():
-        io.pc_select2.next = (modbv(Consts.BTB_NPC)[Consts.SZ_PC_SEL:] if #Insertar condicion else
-                                  (modbv(Consts.PC_BRJMP)[Consts.SZ_PC_SEL:] if ((id_br_type == Consts.BR_J) or
-                                                                                 (id_br_type == Consts.BR_NE and not id_eq) or
-                                                                                 (id_br_type == Consts.BR_EQ and id_eq) or
-                                                                                 (id_br_type == Consts.BR_LT and id_lt) or
-                                                                                 (id_br_type == Consts.BR_LTU and id_ltu) or
-                                                                                 (id_br_type == Consts.BR_GE and not id_lt) or
-                                                                                 (id_br_type == Consts.BR_GEU and not id_ltu)) else
-                                   (modbv(Consts.PC_ID)[Consts.SZ_PC_SEL:] if #insertar condicion else
-                                    (modbv(Consts.PC_4)[Consts.SZ_PC_SEL:]))))
-			
-			
-    @always_comb		#Mux entre los pc si hay o no hay Branch Predictor
+    @always_comb
+    def holi():
+        #CASOS DE ACIERTO PREDICCION
+        #CASO 
+
+    @always_comb
+    def _cambio_estado():# Logica de cambio del estado del BTB, segun la prediccion hecha y  la condicion del branch encontrada
+        bp.change_state =   True    if ((id_br_type == Consts.BR_NE and not id_eq and (bp.current_state == 01 or bp.current_state == 00)) or 
+                                        (id_br_type == Consts.BR_EQ and id_eq and (bp.current_state == 01 or bp.current_state == 00)) or
+                                        (id_br_type == Consts.BR_LT and id_lt and (bp.current_state == 01 or bp.current_state == 00)) or
+                                        (id_br_type == Consts.BR_LTU and id_ltu and (bp.current_state == 01 or bp.current_state == 00)) or
+                                        (id_br_type == Consts.BR_GE and not id_lt and (bp.current_state == 01 or bp.current_state == 00)) or
+                                        (id_br_type == Consts.BR_GEU and not id_ltu) and (bp.current_state == 01 or bp.current_state == 00)) else
+                            False   if  (bp.current_state == 01 or bp.current_state == 00) else
+
+                            False   if ((id_br_type == Consts.BR_NE and id_eq and (bp.current_state == 10 or bp.current_state == 11)) or
+                                        (id_br_type == Consts.BR_EQ and not id_eq and (bp.current_state == 10 or bp.current_state == 11)) or
+                                        (id_br_type == Consts.BR_LT and not id_lt and (bp.current_state == 10 or bp.current_state == 11)) or
+                                        (id_br_type == Consts.BR_LTU and not id_ltu and (bp.current_state == 10 or bp.current_state == 11)) or
+                                        (id_br_type == Consts.BR_GE and id_lt and (bp.current_state == 10 or bp.current_state == 11)) or
+                                        (id_br_type == Consts.BR_GEU and id_ltu) and (bp.current_state == 10 or bp.current_state == 11)) else
+                            True    if  (bp.current_state == 10 or bp.current_state == 11)
+
+    @always_comb    ##HAY QUE ACOMODAR
+    def _pc_select2(): #bp.current_state debe añadirse al dpath, y del dpath como una señal de control
+        io.pc_select2.next =    (modbv(Consts.PC_BRJMP)[Consts.SZ_PC_SEL:]  if ((id_br_type == Consts.BR_NE and not id_eq and (bp.current_state == 01 or bp.current_state == 00)) or #No salte y debi saltar
+                                                                                (id_br_type == Consts.BR_EQ and id_eq and (bp.current_state == 01 or bp.current_state == 00)) or
+                                                                                (id_br_type == Consts.BR_LT and id_lt and (bp.current_state == 01 or bp.current_state == 00)) or
+                                                                                (id_br_type == Consts.BR_LTU and id_ltu and (bp.current_state == 01 or bp.current_state == 00)) or
+                                                                                (id_br_type == Consts.BR_GE and not id_lt and (bp.current_state == 01 or bp.current_state == 00)) or
+                                                                                (id_br_type == Consts.BR_GEU and not id_ltu) and (bp.current_state == 01 or bp.current_state == 00)) else
+                                (modbv(Consts.PC_ID)[Consts.SZ_PC_SEL:]     if ((id_br_type == Consts.BR_NE and id_eq and (bp.current_state == 10 or bp.current_state == 11)) or
+                                                                                (id_br_type == Consts.BR_EQ and not id_eq and (bp.current_state == 10 or bp.current_state == 11)) or
+                                                                                (id_br_type == Consts.BR_LT and not id_lt and (bp.current_state == 10 or bp.current_state == 11)) or
+                                                                                (id_br_type == Consts.BR_LTU and not id_ltu and (bp.current_state == 10 or bp.current_state == 11)) or
+                                                                                (id_br_type == Consts.BR_GE and id_lt and (bp.current_state == 10 or bp.current_state == 11)) or
+                                                                                (id_br_type == Consts.BR_GEU and id_ltu) and (bp.current_state == 10 or bp.current_state == 11)) else
+                                (modbv(Consts.BTB_NPC)[Consts.SZ_PC_SEL:]   if (bp.current_state == 10 or bp.current_state == 11) else #current_state ESTADO DE IF
+                                (modbv(Consts.PC_4)[Consts.SZ_PC_SEL:]))))  #Se necesita cambiar estado a 00 si la instruccion no es un salto
+            
+            
+    @always_comb        #Mux entre los pc si hay o no hay Branch Predictor
     def _pc_select3():
         io.pc_select3.next = (modbv(Consts.PC_EXC)[Consts.SZ_PC_SEL:] if io.csr_exception or io.csr_eret else
-                                  (modbv(Consts.PC_BTB)[Consts.SZ_PC_SEL:] if (bp.enable == TRUE) else
-                                   (modbv(Consts.PC_NBTB)[Consts.SZ_PC_SEL:] if bp.enable == FALSE)))
+                                  (modbv(Consts.PC_BTB)[Consts.SZ_PC_SEL:] if (bp.enable == TRUE)))
 
     @always_comb
     def _fwd_ctrl():
