@@ -28,8 +28,6 @@ from Core.branchp import BranchPIO
 from Core.wishbone import WishboneIntercon
 from Core.icache import ICache
 from Core.dcache import DCache
-from Core.branchp import BranchP
-
 
 
 def Core(clk_i,
@@ -45,7 +43,7 @@ def Core(clk_i,
          DC_ENABLE=True,
          DC_BLOCK_WIDTH=3,
          DC_SET_WIDTH=8,
-         DC_NUM_WAYS=2
+         DC_NUM_WAYS=2,
          BP_ENABLE=True):
     """
     Core top module.
@@ -62,14 +60,14 @@ def Core(clk_i,
     :param DC_BLOCK_WIDTH: Number of bits needed to address the bytes in a line (D$)
     :param DC_SET_WIDTH:   Number of bits needed to address a cache line (D$)
     :param DC_NUM_WAYS:    Cache associativity (D$)
-    :param BP_ENABLE	   Enable Branch Predictor
+    :param BP_ENABLE:	Enable Branch Predictor
     """
     ctrl_dpath   = CtrlIO()
     icache_flush = Signal(False)
     dcache_flush = Signal(False)
     cpu_intercon = WishboneIntercon()
     mem_intercon = WishboneIntercon()
-    ctrl_bp      = BranchPIO() # bp CONSULTAR como conectar
+    ctrl_bp      = BranchPIO() 
 
     dpath = Datapath(clk_i,
                      rst_i,
@@ -84,7 +82,7 @@ def Core(clk_i,
                      dcache_flush,
                      cpu_intercon,
                      mem_intercon,
-                     ctrl_bp) #OJO
+                     ctrl_bp)
     icache = ICache(clk_i=clk_i,
                     rst_i=rst_i,
                     cpu=cpu_intercon,
