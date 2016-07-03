@@ -76,10 +76,7 @@ def core_testbench(hex_file):
                     DC_BLOCK_WIDTH=config.getint('DCache', 'BlockWidth'),
                     DC_SET_WIDTH=config.getint('DCache', 'SetWidth'),
                     DC_NUM_WAYS=config.getint('DCache', 'Ways'),
-                    BP_ENABLE=config.getboolean('BranchP','Enable'),
-                    BP_BLOCK_WIDTH=config.getint('BranchP','BlockWidth'),
-					BP_SET_WIDTH=config.getint('BranchP', 'SetWidth'),
-					BP_NUM_WAYS=config.getint('BranchP', 'Ways'))
+                    BP_ENABLE=config.getboolean('BranchP','Enable'))
 
     memory = Memory(clka_i=clk,
                     rsta_i=rst,
