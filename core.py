@@ -24,7 +24,7 @@ from myhdl import Signal
 from Core.dpath import Datapath
 from Core.cpath import Ctrlpath
 from Core.cpath import CtrlIO
-from Core.cpath import BranchPIO
+from Core.branchp import BranchPIO
 from Core.wishbone import WishboneIntercon
 from Core.icache import ICache
 from Core.dcache import DCache
@@ -62,6 +62,7 @@ def Core(clk_i,
     :param DC_BLOCK_WIDTH: Number of bits needed to address the bytes in a line (D$)
     :param DC_SET_WIDTH:   Number of bits needed to address a cache line (D$)
     :param DC_NUM_WAYS:    Cache associativity (D$)
+    :param BP_ENABLE	   Enable Branch Predictor
     """
     ctrl_dpath   = CtrlIO()
     icache_flush = Signal(False)
@@ -73,7 +74,9 @@ def Core(clk_i,
     dpath = Datapath(clk_i,
                      rst_i,
                      ctrl_dpath,
-                     toHost)
+                     ctrl_bp,
+                     toHost,
+                     BP_ENABLE)
     cpath = Ctrlpath(clk_i,
                      rst_i,
                      ctrl_dpath,
@@ -104,19 +107,6 @@ def Core(clk_i,
                     SET_WIDTH=DC_SET_WIDTH,
                     WAYS=DC_NUM_WAYS,
                     LIMIT_WIDTH=32)
-    branchp = BranchP(clk_i,
-		    rst_i,
-		    ctrl_bp,
-		    pc,
-		    branch,
-		    invalidate,
-		    jalr,
-		    ENABLE=BP_ENABLE,
-		    D_WIDTH=32,
-		    BLOCK_WIDTH=BP_BLOCK_WIDTH,
-		    SET_WIDTH=BP_SET_WIDTH,
-		    WAYS=BP_NUM_WAYS,
-		    LIMIT_WIDTH=32)
 
     return dpath, cpath, icache, dcache
 
