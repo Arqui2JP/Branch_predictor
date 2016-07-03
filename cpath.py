@@ -687,52 +687,45 @@ def Ctrlpath(clk,
 
     @always_comb
     def _cambio_estado():# Logica de cambio del estado del BTB, segun la prediccion hecha y  la condicion del branch encontrada
-        bp.change_state =   True    if ((id_br_type == Consts.BR_NE and not id_eq and (bp.current_state == 01 or bp.current_state == 00)) or 
-                                        (id_br_type == Consts.BR_EQ and id_eq and (bp.current_state == 01 or bp.current_state == 00)) or
-                                        (id_br_type == Consts.BR_LT and id_lt and (bp.current_state == 01 or bp.current_state == 00)) or
-                                        (id_br_type == Consts.BR_LTU and id_ltu and (bp.current_state == 01 or bp.current_state == 00)) or
-                                        (id_br_type == Consts.BR_GE and not id_lt and (bp.current_state == 01 or bp.current_state == 00)) or
-                                        (id_br_type == Consts.BR_GEU and not id_ltu) and (bp.current_state == 01 or bp.current_state == 00)) else
-                            False   if  (bp.current_state == 01 or bp.current_state == 00) else
+        bp.change_state =   True    if ((id_br_type == Consts.BR_NE and not id_eq and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or 
+                                        (id_br_type == Consts.BR_EQ and id_eq and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
+                                        (id_br_type == Consts.BR_LT and id_lt and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
+                                        (id_br_type == Consts.BR_LTU and id_ltu and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
+                                        (id_br_type == Consts.BR_GE and not id_lt and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
+                                        (id_br_type == Consts.BR_GEU and not id_ltu) and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) else
+                            False   if  (bp.current_state == Consts.WN or bp.current_state == Consts.SN) else
 
-                            False   if ((id_br_type == Consts.BR_NE and id_eq and (bp.current_state == 10 or bp.current_state == 11)) or
-                                        (id_br_type == Consts.BR_EQ and not id_eq and (bp.current_state == 10 or bp.current_state == 11)) or
-                                        (id_br_type == Consts.BR_LT and not id_lt and (bp.current_state == 10 or bp.current_state == 11)) or
-                                        (id_br_type == Consts.BR_LTU and not id_ltu and (bp.current_state == 10 or bp.current_state == 11)) or
-                                        (id_br_type == Consts.BR_GE and id_lt and (bp.current_state == 10 or bp.current_state == 11)) or
-                                        (id_br_type == Consts.BR_GEU and id_ltu) and (bp.current_state == 10 or bp.current_state == 11)) else
-                            True    if  (bp.current_state == 10 or bp.current_state == 11)
+                            False   if ((id_br_type == Consts.BR_NE and id_eq and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
+                                        (id_br_type == Consts.BR_EQ and not id_eq and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
+                                        (id_br_type == Consts.BR_LT and not id_lt and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
+                                        (id_br_type == Consts.BR_LTU and not id_ltu and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
+                                        (id_br_type == Consts.BR_GE and id_lt and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
+                                        (id_br_type == Consts.BR_GEU and id_ltu) and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) else
+                            True    if  (bp.current_state == Consts.WT or bp.current_state == Consts.ST)
 
-        bp.branch_taken =   True    if ((id_br_type == Consts.BR_NE and not id_eq and (bp.current_state == 01 or bp.current_state == 00)) or 
-                                        (id_br_type == Consts.BR_EQ and id_eq and (bp.current_state == 01 or bp.current_state == 00)) or
-                                        (id_br_type == Consts.BR_LT and id_lt and (bp.current_state == 01 or bp.current_state == 00)) or
-                                        (id_br_type == Consts.BR_LTU and id_ltu and (bp.current_state == 01 or bp.current_state == 00)) or
-                                        (id_br_type == Consts.BR_GE and not id_lt and (bp.current_state == 01 or bp.current_state == 00)) or
-                                        (id_br_type == Consts.BR_GEU and not id_ltu) and (bp.current_state == 01 or bp.current_state == 00))
-                                    elif (bp.current_state == 01 or bp.current_state == 00)
-                                    elif ((id_br_type == Consts.BR_NE and id_eq and (bp.current_state == 10 or bp.current_state == 11)) or
-                                        (id_br_type == Consts.BR_EQ and not id_eq and (bp.current_state == 10 or bp.current_state == 11)) or
-                                        (id_br_type == Consts.BR_LT and not id_lt and (bp.current_state == 10 or bp.current_state == 11)) or
-                                        (id_br_type == Consts.BR_LTU and not id_ltu and (bp.current_state == 10 or bp.current_state == 11)) or
-                                        (id_br_type == Consts.BR_GE and id_lt and (bp.current_state == 10 or bp.current_state == 11)) or
-                                        (id_br_type == Consts.BR_GEU and id_ltu) and (bp.current_state == 10 or bp.current_state == 11))
-                                    elif  (bp.current_state == 10 or bp.current_state == 11)
+        bp.branch_taken =   True    if ((id_br_type == Consts.BR_J) or					##JUMP
+                                        (id_br_type == Consts.BR_NE and not id_eq) or
+                                        (id_br_type == Consts.BR_EQ and id_eq) or
+                                        (id_br_type == Consts.BR_LT and id_lt) or
+                                        (id_br_type == Consts.BR_LTU and id_ltu) or
+                                        (id_br_type == Consts.BR_GE and not id_lt) or
+                                        (id_br_type == Consts.BR_GEU and not id_ltu))
 
     @always_comb    ##HAY QUE ACOMODAR
     def _pc_select2(): #bp.current_state debe añadirse al dpath, y del dpath como una señal de control
-        io.pc_select2.next =    (modbv(Consts.PC_BRJMP)[Consts.SZ_PC_SEL:]  if ((id_br_type == Consts.BR_NE and not id_eq and (bp.current_state == 01 or bp.current_state == 00)) or #No salte y debi saltar
-                                                                                (id_br_type == Consts.BR_EQ and id_eq and (bp.current_state == 01 or bp.current_state == 00)) or
-                                                                                (id_br_type == Consts.BR_LT and id_lt and (bp.current_state == 01 or bp.current_state == 00)) or
-                                                                                (id_br_type == Consts.BR_LTU and id_ltu and (bp.current_state == 01 or bp.current_state == 00)) or
-                                                                                (id_br_type == Consts.BR_GE and not id_lt and (bp.current_state == 01 or bp.current_state == 00)) or
-                                                                                (id_br_type == Consts.BR_GEU and not id_ltu) and (bp.current_state == 01 or bp.current_state == 00)) else
-                                (modbv(Consts.PC_ID)[Consts.SZ_PC_SEL:]     if ((id_br_type == Consts.BR_NE and id_eq and (bp.current_state == 10 or bp.current_state == 11)) or
-                                                                                (id_br_type == Consts.BR_EQ and not id_eq and (bp.current_state == 10 or bp.current_state == 11)) or
-                                                                                (id_br_type == Consts.BR_LT and not id_lt and (bp.current_state == 10 or bp.current_state == 11)) or
-                                                                                (id_br_type == Consts.BR_LTU and not id_ltu and (bp.current_state == 10 or bp.current_state == 11)) or
-                                                                                (id_br_type == Consts.BR_GE and id_lt and (bp.current_state == 10 or bp.current_state == 11)) or
-                                                                                (id_br_type == Consts.BR_GEU and id_ltu) and (bp.current_state == 10 or bp.current_state == 11)) else
-                                (modbv(Consts.BTB_NPC)[Consts.SZ_PC_SEL:]   if (bp.current_state == 10 or bp.current_state == 11) else #current_state ESTADO DE IF
+        io.pc_select2.next =    (modbv(Consts.PC_BRJMP)[Consts.SZ_PC_SEL:]  if ((id_br_type == Consts.BR_NE and not id_eq and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or #No salte y debi saltar
+                                                                                (id_br_type == Consts.BR_EQ and id_eq and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
+                                                                                (id_br_type == Consts.BR_LT and id_lt and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
+                                                                                (id_br_type == Consts.BR_LTU and id_ltu and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
+                                                                                (id_br_type == Consts.BR_GE and not id_lt and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
+                                                                                (id_br_type == Consts.BR_GEU and not id_ltu) and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) else
+                                (modbv(Consts.PC_ID)[Consts.SZ_PC_SEL:]     if ((id_br_type == Consts.BR_NE and id_eq and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
+                                                                                (id_br_type == Consts.BR_EQ and not id_eq and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
+                                                                                (id_br_type == Consts.BR_LT and not id_lt and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
+                                                                                (id_br_type == Consts.BR_LTU and not id_ltu and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
+                                                                                (id_br_type == Consts.BR_GE and id_lt and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
+                                                                                (id_br_type == Consts.BR_GEU and id_ltu) and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) else
+                                (modbv(Consts.BTB_NPC)[Consts.SZ_PC_SEL:]   if (bp.current_state == Consts.WT or bp.current_state == Consts.ST) else #current_state ESTADO DE IF
                                 (modbv(Consts.PC_4)[Consts.SZ_PC_SEL:]))))  #Se necesita cambiar estado a 00 si la instruccion no es un salto
             
             
