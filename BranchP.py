@@ -31,7 +31,7 @@ class BranchPIO()
 
 def BranchP(clk,
            rst,
-           BPio)
+           BPio):
     """
     The Branch Predictor module.
     :param clk:         System clock
