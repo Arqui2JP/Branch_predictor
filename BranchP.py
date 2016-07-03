@@ -11,9 +11,11 @@ from myhdl import instances
 
 class BranchPIO()
     def __init__(self):
-        self.enable     = Signal(False)         #Va al cpath
+        self.enable     	= Signal(False)         #Va al cpath
         self.valid_branch       = Signal(False)         #viene del cpath
         self.valid_jump         = Signal(False)         #viene del cpath
+        self.current_state   	= Signal(modbv(0)[2:])  # va al cpath
+        ####################
         #self.pc        =   #Creo que es innecesaria 
         #Cambio señales de io
         self.pc_if              = Signal(modbv(0)[32:])     #viene del dpath
@@ -111,8 +113,6 @@ def BranchP(clk,
         tag_pc             = Signal(modbv(0)[TAG_WIDTH:]) # se utilizara if_pc como etiqueta, REVISAR TAMAÑO
         adress_target      = Signal(modbv(0)[D_WIDTH:])   # direccion de salto, REVISAR TAMAÑO
         valid_bit          = Signal(False)                # Bit de validez. Indica si la instruccion de salto esta en el BTB. (MISS)
-        ####################
-        current_state      = Signal(modbv(0)[2:])         # OJO- SE;AL QUE DEBE IR A CONTROL
         ####################
         #SENAL CORRESPONDIENTE A LA ALEATORIEDAD
         random 				= Signal(modbv(4, min=0, max = SET_NUMBER)) 
