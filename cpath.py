@@ -727,8 +727,8 @@ def Ctrlpath(clk,
             
     @always_comb        #Mux entre los pc si hay o no hay Branch Predictor
     def _pc_select3():
-        io.pc_select3.next = (modbv(Consts.PC_EXC)[Consts.SZ_PC_SEL:] if io.csr_exception or io.csr_eret else
-                                  (modbv(Consts.PC_BTB)[Consts.SZ_PC_SEL:] if (bp.enable == TRUE)))
+        io.pc_select3.next = (modbv(Consts.PC_EXC_BTB)[Consts.SZ_PC_SEL2:] if io.csr_exception or io.csr_eret else
+                                  (modbv(Consts.PC_BTB)[Consts.SZ_PC_SEL2:] if (bp.enable == TRUE)))
 
     @always_comb
     def _fwd_ctrl():
