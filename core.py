@@ -74,7 +74,7 @@ def Core(clk_i,
                      ctrl_dpath,
                      ctrl_bp,
                      toHost,
-                     BP_ENABLE)
+                     ENABLE=BP_ENABLE)
     cpath = Ctrlpath(clk_i,
                      rst_i,
                      ctrl_dpath,
@@ -82,7 +82,8 @@ def Core(clk_i,
                      dcache_flush,
                      cpu_intercon,
                      mem_intercon,
-                     ctrl_bp)
+                     ctrl_bp,
+                     ENABLE=BP_ENABLE)
     icache = ICache(clk_i=clk_i,
                     rst_i=rst_i,
                     cpu=cpu_intercon,
