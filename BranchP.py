@@ -31,21 +31,12 @@ class BranchPIO()
 
 def BranchP(clk,
            rst,
-           BPio,       #se borro la señal pc porque ya se incluye en BranchPIO
-           branch,
-           invalidate,
-           jalr,
-           ENABLE): 
+           BPio)
     """
     The Branch Predictor module.
     :param clk:         System clock
     :param rst:         System reset
-    :param BPio:        IO bundle. Interface with the branchp module
-    :param pc:
-    :param branch:
-    :param invalidate:  Enable flush Branch Predictor
-    :param jalr:
-    :param Enable:      Enable Branch Predictor
+    :param BPio:        IO bundle. Interface with the dpath and cpath modules
     """
     
     """
