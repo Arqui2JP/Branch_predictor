@@ -41,7 +41,7 @@ from Core.instructions import FenceFunct3
 from Core.instructions import SystemFunct3
 from Core.instructions import PrivFunct12
 from Core.instructions import MulDivFunct
-from Core.BranchP import BranchP #OJO VER COMO SE AGREGAN SEÑALES DEL BRANCHP
+
 
 Y = True
 N = False
@@ -181,8 +181,8 @@ class CtrlIO:
         self.full_stall         = Signal(False)
         self.pipeline_kill      = Signal(False)
         self.pc_select1         = Signal(modbv(0)[Consts.SZ_PC_SEL:])   #PC selector for original mux_pc
-    self.pc_select2         = Signal(modbv(0)[Consts.SZ_PC_SEL:])   #PC selector for BTB 
-    self.pc_select3         = Signal(modbv(0)[Consts.SZ_PC_SEL:])   #PC selector between pc_select1 and pc_select2
+        self.pc_select2         = Signal(modbv(0)[Consts.SZ_PC_SEL:])   #PC selector for BTB 
+        self.pc_select3         = Signal(modbv(0)[Consts.SZ_PC_SEL:])   #PC selector between pc_select1 and pc_select2
         self.id_next_pc         = Signal(modbv(0)[32:])
         self.id_op1_select      = Signal(modbv(0)[Consts.SZ_OP1:])
         self.id_op2_select      = Signal(modbv(0)[Consts.SZ_OP2:])
@@ -247,7 +247,8 @@ def Ctrlpath(clk,
              dcache_flush,
              imem,
              dmem,
-             bp): #Se agrego bp
+             bp,
+             ENABLE_BP):
     """
     The decoder, exception, hazard detection, and control unit.
     :param clk:          Main clock
@@ -681,11 +682,6 @@ def Ctrlpath(clk,
                                     (modbv(Consts.PC_4)[Consts.SZ_PC_SEL:]))))
 
     @always_comb
-    def holi():
-        #CASOS DE ACIERTO PREDICCION
-        #CASO 
-
-    @always_comb
     def _cambio_estado():# Logica de cambio del estado del BTB, segun la prediccion hecha y  la condicion del branch encontrada
         bp.change_state =   True    if ((id_br_type == Consts.BR_NE and not id_eq and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or 
                                         (id_br_type == Consts.BR_EQ and id_eq and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
@@ -703,7 +699,7 @@ def Ctrlpath(clk,
                                         (id_br_type == Consts.BR_GEU and id_ltu) and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) else
                             True    if  (bp.current_state == Consts.WT or bp.current_state == Consts.ST)
 
-        bp.branch_taken =   True    if ((id_br_type == Consts.BR_J) or					##JUMP
+        bp.branch_taken =   True    if ((id_br_type == Consts.BR_J) or
                                         (id_br_type == Consts.BR_NE and not id_eq) or
                                         (id_br_type == Consts.BR_EQ and id_eq) or
                                         (id_br_type == Consts.BR_LT and id_lt) or
@@ -711,21 +707,21 @@ def Ctrlpath(clk,
                                         (id_br_type == Consts.BR_GE and not id_lt) or
                                         (id_br_type == Consts.BR_GEU and not id_ltu))
 
-    @always_comb    ##HAY QUE ACOMODAR
+    @always_comb    
     def _pc_select2(): #bp.current_state debe añadirse al dpath, y del dpath como una señal de control
                                                                             # OJO El branch_taken tiene el jump que no considerabamos antes
-        io.pc_select2.next =    (modbv(Consts.PC_BRJMP)[Consts.SZ_PC_SEL:]  if (bp.branch_taken and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) else
+        io.pc_select2.next =    (modbv(Consts.PC_BRJMP)[Consts.SZ_PC_SEL:]  if (bp.branch_taken and not bp.hit and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) else
                                 (modbv(Consts.PC_ID)[Consts.SZ_PC_SEL:]     if ((id_br_type == Consts.BR_NE and id_eq and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
                                                                                 (id_br_type == Consts.BR_EQ and not id_eq and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
                                                                                 (id_br_type == Consts.BR_LT and not id_lt and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
                                                                                 (id_br_type == Consts.BR_LTU and not id_ltu and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
                                                                                 (id_br_type == Consts.BR_GE and id_lt and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
                                                                                 (id_br_type == Consts.BR_GEU and id_ltu) and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) else
-                                (modbv(Consts.BTB_NPC)[Consts.SZ_PC_SEL:]   if (bp.current_state == Consts.WT or bp.current_state == Consts.ST) else #current_state ESTADO DE IF
+                                (modbv(Consts.BTB_NPC)[Consts.SZ_PC_SEL:]   if (id_br_type == Consts.BR_J) or (bp.branch_taken and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) else #current_state ESTADO DE IF
                                 (modbv(Consts.PC_4)[Consts.SZ_PC_SEL:]))))  #Se necesita cambiar estado a 00 si la instruccion no es un salto
             
             
-    @always_comb        #Mux entre los pc si hay o no hay Branch Predictor
+    @always_comb        #Mux entre la salida del Branch Predictor y las excepciones
     def _pc_select3():
         io.pc_select3.next = (modbv(Consts.PC_EXC_BTB)[Consts.SZ_PC_SEL2:] if io.csr_exception or io.csr_eret else
                                   (modbv(Consts.PC_BTB)[Consts.SZ_PC_SEL2:] if (bp.enable == TRUE)))
@@ -742,10 +738,11 @@ def Ctrlpath(clk,
                                          (modbv(Consts.FWD_N)[Consts.SZ_FWD:]))))
 
     @always_comb
-    def _ctrl_pipeline():
+    def _ctrl_pipeline(): 
         imem_stall            = io.imem_pipeline.valid and not cyc_ended and not imem_m.ack_i and not io.csr_exception
         dmem_stall            = io.dmem_pipeline.valid and not dmem_m.ack_i and not io.csr_exception
-        io.if_kill.next       = io.pc_select != Consts.PC_4
+        io.if_kill.next       = (io.pc_select1 != Consts.PC_4) if (ENABLE_BP == False) else     # Modificacion al if_kill, cuando esta activado el BP
+                                ((io.pc_select2 == Consts.PC_ID) or (io.pc_select2 == Consts.PC_BRJMP) or (io.pc_select3 == Consts.PC_EXC_BTB)) if (ENABLE_BP == True)
         io.id_stall.next      = (((io.id_fwd1_select == Consts.FWD_EX or io.id_fwd2_select == Consts.FWD_EX) and
                                   ((ex_mem_funct == Consts.M_RD and ex_mem_valid) or ex_csr_cmd != CSRCMD.CSR_IDLE)) or
                                  (id_fence_i and (ex_mem_funct == Consts.M_WR or mem_mem_funct == Consts.M_WR or wb_mem_funct == Consts.M_WR)))
