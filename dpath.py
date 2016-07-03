@@ -44,10 +44,12 @@ from Core.mux import Mux2
 def Datapath(clk,
              rst,
              ctrlIO,
-			 ctrlBP,
-             toHost):
+             ctrlBP,
+             toHost,
+             ENABLE_BP):
     """
     A 5-stage data path with data forwarding.
+
     :param clk:    System clock
     :param rst:    System reset
     :param ctrlIO: IO bundle. Interface with the cpath module
@@ -115,289 +117,548 @@ def Datapath(clk,
     wb_wb_we         = Signal(False)
     wb_rf_writePort  = RFWritePort()
 
-    # A stage
-    # ----------------------------------------------------------------------
-    pc_mux_nobp = Mux4(ctrlIO.pc_select1,  # noqa
-                  if_pc_next,
-                  id_pc_brjmp,
-                  id_pc_jalr,
-                  exc_pc,
-                  nobtb_pc)
-				  #Cambio
-				  
-    pc_mux_bp=Mux4(ctrlIO.pc_select2,	#BTB selector
-	              if_pc_next,		
-				  id_pc_brjmp, 		#Hay que ver como se agrega el jump pero ese puede ser otro mux antes de dos entradas. Pero primero intentemos con el branch
-				  id_pc_next,
-				  ctrlBP.btb_npc,
-				  btb_pc)
-	
-	mux_pc = Mux4(ctrlIO.pc_select3,  #Selector 
-	              nobtb_pc,
-				  btb_pc,
-				  0x00000BAD,
-				  exc_pc,
-				  a_pc)
-                  #Cambio
-    # IF stage
-    # ----------------------------------------------------------------------
-    @always(clk.posedge)
-    def pc():
-        if rst == 1:
-            if_pc.next = Consts.START_ADDR
-        else:
-            if (not ctrlIO.id_stall and not ctrlIO.full_stall) | ctrlIO.pipeline_kill:
-                if_pc.next = a_pc
 
-    @always_comb
-    def _pc_next():
+    if ENABLE_BP: #Con implementacion del BTB
 
-        ctrlIO.imem_pipeline.addr.next  = if_pc
-        if_pc_next.next                 = if_pc + 4
-        if_instruction.next             = ctrlIO.imem_pipeline.rdata
-        ctrlIO.imem_pipeline.wdata.next = 0xDEADC0DE
-        ctrlIO.imem_pipeline.typ.next   = Consts.MT_W
-        ctrlIO.imem_pipeline.fcn.next   = Consts.M_RD
-        ctrlIO.imem_pipeline.valid.next = True
-		
-	@always_comb
-    def _pc_next1():
-		ctrlBP.pc_if.next				= if_pc
+        branchp = BranchP(clk_i,
+                          rst_i,
+                          ctrl_bp,
+                          pc,
+                          branch,
+                          invalidate,
+                          jalr)
+        # A stage
+        # ----------------------------------------------------------------------
+        pc_mux_bp=Mux4(ctrlIO.pc_select2,   #BTB selector
+                      if_pc_next,       
+                      id_pc_brjmp,      #Hay que ver como se agrega el jump pero ese puede ser otro mux antes de dos entradas. Pero primero intentemos con el branch
+                      id_pc_next,
+                      ctrlBP.btb_npc,
+                      btb_pc)
+        
+        mux_pc = Mux2(ctrlIO.pc_select3,  #Selector 
+                      btb_pc
+                      exc_pc,
+                      a_pc)
+                      #Cambio
+        # IF stage
+        # ----------------------------------------------------------------------
+        @always(clk.posedge)
+        def pc():
+            if rst == 1:
+                if_pc.next = Consts.START_ADDR
+            else:
+                if (not ctrlIO.id_stall and not ctrlIO.full_stall) | ctrlIO.pipeline_kill:
+                    if_pc.next = a_pc
 
-    # ID stage
-    # ----------------------------------------------------------------------
-    @always(clk.posedge)
-    def ifid():
-        if rst == 1:
-            id_pc.next          = 0
-            id_instruction.next = Consts.BUBBLE
-        else:
-            id_pc.next          = (id_pc if ctrlIO.id_stall or ctrlIO.full_stall else (if_pc))
-            id_instruction.next = (id_instruction if ctrlIO.id_stall or ctrlIO.full_stall else
-                                   (Consts.BUBBLE if ctrlIO.pipeline_kill or ctrlIO.if_kill else
-                                    (if_instruction)))
+        @always_comb
+        def _pc_next():
 
-    reg_file = RegisterFile(clk,  # noqa
-                            id_rf_portA,
-                            id_rf_portB,
-                            wb_rf_writePort)
+            ctrlIO.imem_pipeline.addr.next  = if_pc
+            if_pc_next.next                 = if_pc + 4
+            if_instruction.next             = ctrlIO.imem_pipeline.rdata
+            ctrlIO.imem_pipeline.wdata.next = 0xDEADC0DE
+            ctrlIO.imem_pipeline.typ.next   = Consts.MT_W
+            ctrlIO.imem_pipeline.fcn.next   = Consts.M_RD
+            ctrlIO.imem_pipeline.valid.next = True
 
-    op1_data_fwd = Mux4(ctrlIO.id_fwd1_select,  # noqa
-                        id_rs1_data,
-                        ex_data_out,
-                        mem_wb_wdata,
-                        wb_wb_wdata,
-                        id_op1)
 
-    op2_data_fwd = Mux4(ctrlIO.id_fwd2_select,  # noqa
-                        id_rs2_data,
-                        ex_data_out,
-                        mem_wb_wdata,
-                        wb_wb_wdata,
-                        id_op2)
+        @always_comb
+        def _pc_next1():
+            ctrlBP.pc_if.next               = if_pc
 
-    imm_gen = IMMGen(ctrlIO.id_sel_imm,  # noqa
-                     id_instruction,
-                     id_imm)
+        # ID stage
+        # ----------------------------------------------------------------------
+        @always(clk.posedge)
+        def ifid():
+            if rst == 1:
+                id_pc.next          = 0
+                id_instruction.next = Consts.BUBBLE
+            else:
+                id_pc.next          = (id_pc if ctrlIO.id_stall or ctrlIO.full_stall else (if_pc))
+                id_instruction.next = (id_instruction if ctrlIO.id_stall or ctrlIO.full_stall else
+                                       (Consts.BUBBLE if ctrlIO.pipeline_kill or ctrlIO.if_kill else
+                                        (if_instruction)))
 
-    op1_mux = Mux4(ctrlIO.id_op1_select,  # noqa
-                   id_op1,
-                   id_pc,
-                   0x00000000,
-                   0x00000BAD,
-                   id_op1_data)
+        reg_file = RegisterFile(clk,  # noqa
+                                id_rf_portA,
+                                id_rf_portB,
+                                wb_rf_writePort)
 
-    op2_mux = Mux4(ctrlIO.id_op2_select,  # noqa
-                   id_op2,
-                   id_imm,
-                   0x00000004,
-                   0x00000000,
-                   id_op2_data)
+        op1_data_fwd = Mux4(ctrlIO.id_fwd1_select,  # noqa
+                            id_rs1_data,
+                            ex_data_out,
+                            mem_wb_wdata,
+                            wb_wb_wdata,
+                            id_op1)
 
-    @always_comb
-    def _id_assignment():
-        ctrlIO.id_instruction.next     = id_instruction
-        id_rf_portA.ra.next            = id_instruction[20:15]
-        id_rf_portB.ra.next            = id_instruction[25:20]
-        ctrlIO.id_rs1_addr.next        = id_instruction[20:15]
-        ctrlIO.id_rs2_addr.next        = id_instruction[25:20]
-        id_rs1_data.next               = id_rf_portA.rd
-        id_rs2_data.next               = id_rf_portB.rd
-        id_wb_addr.next                = id_instruction[12:7]
-        id_csr_addr.next               = id_instruction[32:20]
-        id_mem_wdata.next              = id_op2
-        id_pc_brjmp.next               = id_pc.signed() + id_imm.signed()
-        id_pc_jalr.next                = (id_op1.signed() + id_imm.signed()) & ~0x01
-        id_csr_addr.next               = id_instruction[32:20]
-        id_csr_cmd.next                = ctrlIO.id_csr_cmd
-        id_csr_wdata.next              = id_instruction[20:15] if id_instruction[14] else id_op1
-        ctrlIO.id_next_pc.next         = a_pc
-        ctrlIO.csr_interrupt.next      = csr_exc_io.interrupt
-        ctrlIO.csr_interrupt_code.next = csr_exc_io.interrupt_code
-        ctrlIO.id_op1.next             = id_op1
-        ctrlIO.id_op2.next             = id_op2
+        op2_data_fwd = Mux4(ctrlIO.id_fwd2_select,  # noqa
+                            id_rs2_data,
+                            ex_data_out,
+                            mem_wb_wdata,
+                            wb_wb_wdata,
+                            id_op2)
 
-	@always_comb		#Assignment for BTB NO SE SI DEBERIAN SER .NEXT las variable que estamos asignando
-    def _id_assignment1():
-		ctrlBP.pc_if.next				= id_pc
-		ctrlBP.pc_id_brjmp.next			= id_pc_brjmp
-		#ctrlBP.pc_id_jalr.next			= id_pc_jalr	Podemos trabajar con el jal despues
-		id_pc_next.next					= if_pc_next	#Valor siguiente a proxima instruccion en etapa id
-		
-    # EX stage
-    # ----------------------------------------------------------------------
-    @always(clk.posedge)
-    def idex():
-        if rst == 1:
-            ex_pc.next           = 0
-            ex_op1_data.next     = 0
-            ex_op2_data.next     = 0
-            ex_alu_funct.next    = ALUOp.OP_ADD
-            ex_mem_type.next     = Consts.MT_X
-            ex_mem_funct.next    = Consts.M_X
-            ex_mem_valid.next    = False
-            ex_mem_wdata.next    = 0
-            ex_mem_data_sel.next = Consts.WB_X
-            ex_wb_addr.next      = 0
-            ex_wb_we.next        = False
-            ex_csr_addr.next     = 0
-            ex_csr_wdata.next    = 0
-            ex_csr_cmd.next      = CSRCMD.CSR_IDLE
-        else:
-            ex_pc.next           = (ex_pc if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_pc))
-            ex_op1_data.next     = (ex_op1_data if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_op1_data))
-            ex_op2_data.next     = (ex_op2_data if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_op2_data))
-            ex_alu_funct.next    = (ex_alu_funct if (ctrlIO.id_stall or ctrlIO.full_stall) else (ctrlIO.id_alu_funct))
-            ex_mem_type.next     = (ex_mem_type if (ctrlIO.id_stall or ctrlIO.full_stall) else (ctrlIO.id_mem_type))
-            ex_mem_wdata.next    = (ex_mem_wdata if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_mem_wdata))
-            ex_mem_data_sel.next = (ex_mem_data_sel if (ctrlIO.id_stall or ctrlIO.full_stall) else (ctrlIO.id_mem_data_sel))
-            ex_wb_addr.next      = (ex_wb_addr if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_wb_addr))
-            ex_csr_addr.next     = (ex_csr_addr if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_csr_addr))
-            ex_csr_wdata.next    = (ex_csr_wdata if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_csr_wdata))
-            ex_mem_funct.next    = (ex_mem_funct if ctrlIO.full_stall else
-                                    (Consts.M_X if (ctrlIO.pipeline_kill or ctrlIO.id_kill or (ctrlIO.id_stall and not ctrlIO.full_stall)) else
-                                     (ctrlIO.id_mem_funct)))
-            ex_mem_valid.next    = (ex_mem_valid if ctrlIO.full_stall else
-                                    (False if (ctrlIO.pipeline_kill or ctrlIO.id_kill or (ctrlIO.id_stall and not ctrlIO.full_stall)) else
-                                     (ctrlIO.id_mem_valid)))
-            ex_wb_we.next        = (ex_wb_we if ctrlIO.full_stall else
-                                    (False if (ctrlIO.pipeline_kill or ctrlIO.id_kill or (ctrlIO.id_stall and not ctrlIO.full_stall)) else
-                                     (ctrlIO.id_wb_we)))
-            ex_csr_cmd.next      = (ex_csr_cmd if ctrlIO.full_stall else
-                                    (modbv(CSRCMD.CSR_IDLE)[CSRCMD.SZ_CMD:] if (ctrlIO.pipeline_kill or ctrlIO.id_kill or (ctrlIO.id_stall and not ctrlIO.full_stall)) else
-                                     (id_csr_cmd)))
+        imm_gen = IMMGen(ctrlIO.id_sel_imm,  # noqa
+                         id_instruction,
+                         id_imm)
 
-    alu = ALU(clk, rst, aluIO)  # noqa
+        op1_mux = Mux4(ctrlIO.id_op1_select,  # noqa
+                       id_op1,
+                       id_pc,
+                       0x00000000,
+                       0x00000BAD,
+                       id_op1_data)
 
-    @always_comb
-    def _ex_assignments():
-        aluIO.input1.next        = ex_op1_data
-        aluIO.input2.next        = ex_op2_data
-        aluIO.function.next      = ex_alu_funct
-        aluIO.stall.next         = ctrlIO.full_stall
-        aluIO.kill.next          = ctrlIO.pipeline_kill
-        ex_data_out.next         = aluIO.output
-        ctrlIO.ex_req_stall.next = aluIO.req_stall
-        ctrlIO.ex_wb_we.next     = ex_wb_we
-        ctrlIO.ex_wb_addr.next   = ex_wb_addr
+        op2_mux = Mux4(ctrlIO.id_op2_select,  # noqa
+                       id_op2,
+                       id_imm,
+                       0x00000004,
+                       0x00000000,
+                       id_op2_data)
 
-    # MEM stage
-    # ----------------------------------------------------------------------
-    @always(clk.posedge)
-    def exmem():
-        if rst == 1:
-            mem_pc.next           = 0
-            mem_mem_valid.next    = False
-            mem_alu_out.next      = 0
-            mem_mem_wdata.next    = 0
-            mem_mem_type.next     = Consts.MT_X
-            mem_mem_funct.next    = Consts.M_X
-            mem_mem_data_sel.next = Consts.WB_X
-            mem_wb_addr.next      = 0
-            mem_wb_we.next        = False
-            mem_csr_addr.next     = 0
-            mem_csr_wdata.next    = 0
-            mem_csr_cmd.next      = CSRCMD.CSR_IDLE
-        else:
-            mem_pc.next           = (mem_pc if ctrlIO.full_stall else ex_pc)
-            mem_alu_out.next      = (mem_alu_out if ctrlIO.full_stall else ex_data_out)
-            mem_mem_wdata.next    = (mem_mem_wdata if ctrlIO.full_stall else ex_mem_wdata)
-            mem_mem_type.next     = (mem_mem_type if ctrlIO.full_stall else ex_mem_type)
-            mem_mem_funct.next    = (mem_mem_funct if ctrlIO.full_stall else ex_mem_funct)
-            mem_mem_data_sel.next = (mem_mem_data_sel if ctrlIO.full_stall else ex_mem_data_sel)
-            mem_wb_addr.next      = (mem_wb_addr if ctrlIO.full_stall else ex_wb_addr)
-            mem_csr_addr.next     = (mem_csr_addr if ctrlIO.full_stall else ex_csr_addr)
-            mem_csr_wdata.next    = (mem_csr_wdata if ctrlIO.full_stall else ex_csr_wdata)
-            mem_mem_valid.next    = (mem_mem_valid if ctrlIO.full_stall else (False if ctrlIO.pipeline_kill else ex_mem_valid))
-            mem_wb_we.next        = (mem_wb_we if ctrlIO.full_stall else (False if ctrlIO.pipeline_kill else ex_wb_we))
-            mem_csr_cmd.next      = (mem_csr_cmd if (ctrlIO.full_stall) else (modbv(CSRCMD.CSR_IDLE)[CSRCMD.SZ_CMD:] if ctrlIO.pipeline_kill else ex_csr_cmd))
+        @always_comb
+        def _id_assignment():
+            ctrlIO.id_instruction.next     = id_instruction
+            id_rf_portA.ra.next            = id_instruction[20:15]
+            id_rf_portB.ra.next            = id_instruction[25:20]
+            ctrlIO.id_rs1_addr.next        = id_instruction[20:15]
+            ctrlIO.id_rs2_addr.next        = id_instruction[25:20]
+            id_rs1_data.next               = id_rf_portA.rd
+            id_rs2_data.next               = id_rf_portB.rd
+            id_wb_addr.next                = id_instruction[12:7]
+            id_csr_addr.next               = id_instruction[32:20]
+            id_mem_wdata.next              = id_op2
+            id_pc_brjmp.next               = id_pc.signed() + id_imm.signed()
+            id_pc_jalr.next                = (id_op1.signed() + id_imm.signed()) & ~0x01
+            id_csr_addr.next               = id_instruction[32:20]
+            id_csr_cmd.next                = ctrlIO.id_csr_cmd
+            id_csr_wdata.next              = id_instruction[20:15] if id_instruction[14] else id_op1
+            ctrlIO.id_next_pc.next         = a_pc
+            ctrlIO.csr_interrupt.next      = csr_exc_io.interrupt
+            ctrlIO.csr_interrupt_code.next = csr_exc_io.interrupt_code
+            ctrlIO.id_op1.next             = id_op1
+            ctrlIO.id_op2.next             = id_op2
 
-    csr = CSR(clk,  # noqa
-              rst,
-              csr_rw,
-              csr_exc_io,
-              ctrlIO.csr_retire,
-              ctrlIO.csr_prv,
-              ctrlIO.csr_illegal_access,
-              ctrlIO.full_stall,
-              toHost)
+        @always_comb        #Assignment for BTB NO SE SI DEBERIAN SER .NEXT las variable que estamos asignando
+        def _id_assignment1():
+            ctrlBP.pc_if.next               = id_pc
+            ctrlBP.pc_id_brjmp.next         = id_pc_brjmp
+            #ctrlBP.pc_id_jalr.next         = id_pc_jalr    Podemos trabajar con el jal despues
+            id_pc_next.next                 = if_pc_next    #Valor siguiente a proxima instruccion en etapa id
+            
+        # EX stage
+        # ----------------------------------------------------------------------
+        @always(clk.posedge)
+        def idex():
+            if rst == 1:
+                ex_pc.next           = 0
+                ex_op1_data.next     = 0
+                ex_op2_data.next     = 0
+                ex_alu_funct.next    = ALUOp.OP_ADD
+                ex_mem_type.next     = Consts.MT_X
+                ex_mem_funct.next    = Consts.M_X
+                ex_mem_valid.next    = False
+                ex_mem_wdata.next    = 0
+                ex_mem_data_sel.next = Consts.WB_X
+                ex_wb_addr.next      = 0
+                ex_wb_we.next        = False
+                ex_csr_addr.next     = 0
+                ex_csr_wdata.next    = 0
+                ex_csr_cmd.next      = CSRCMD.CSR_IDLE
+            else:
+                ex_pc.next           = (ex_pc if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_pc))
+                ex_op1_data.next     = (ex_op1_data if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_op1_data))
+                ex_op2_data.next     = (ex_op2_data if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_op2_data))
+                ex_alu_funct.next    = (ex_alu_funct if (ctrlIO.id_stall or ctrlIO.full_stall) else (ctrlIO.id_alu_funct))
+                ex_mem_type.next     = (ex_mem_type if (ctrlIO.id_stall or ctrlIO.full_stall) else (ctrlIO.id_mem_type))
+                ex_mem_wdata.next    = (ex_mem_wdata if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_mem_wdata))
+                ex_mem_data_sel.next = (ex_mem_data_sel if (ctrlIO.id_stall or ctrlIO.full_stall) else (ctrlIO.id_mem_data_sel))
+                ex_wb_addr.next      = (ex_wb_addr if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_wb_addr))
+                ex_csr_addr.next     = (ex_csr_addr if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_csr_addr))
+                ex_csr_wdata.next    = (ex_csr_wdata if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_csr_wdata))
+                ex_mem_funct.next    = (ex_mem_funct if ctrlIO.full_stall else
+                                        (Consts.M_X if (ctrlIO.pipeline_kill or ctrlIO.id_kill or (ctrlIO.id_stall and not ctrlIO.full_stall)) else
+                                         (ctrlIO.id_mem_funct)))
+                ex_mem_valid.next    = (ex_mem_valid if ctrlIO.full_stall else
+                                        (False if (ctrlIO.pipeline_kill or ctrlIO.id_kill or (ctrlIO.id_stall and not ctrlIO.full_stall)) else
+                                         (ctrlIO.id_mem_valid)))
+                ex_wb_we.next        = (ex_wb_we if ctrlIO.full_stall else
+                                        (False if (ctrlIO.pipeline_kill or ctrlIO.id_kill or (ctrlIO.id_stall and not ctrlIO.full_stall)) else
+                                         (ctrlIO.id_wb_we)))
+                ex_csr_cmd.next      = (ex_csr_cmd if ctrlIO.full_stall else
+                                        (modbv(CSRCMD.CSR_IDLE)[CSRCMD.SZ_CMD:] if (ctrlIO.pipeline_kill or ctrlIO.id_kill or (ctrlIO.id_stall and not ctrlIO.full_stall)) else
+                                         (id_csr_cmd)))
 
-    mdata_mux = Mux4(mem_mem_data_sel,  # noqa
-                     mem_alu_out,
-                     mem_mem_data,
-                     mem_csr_rdata,
-                     0x0BADF00D,
-                     mem_wb_wdata)
+        alu = ALU(clk, rst, aluIO)  # noqa
 
-    exc_pc_mux = Mux2(ctrlIO.csr_eret,  # noqa
-                      csr_exc_io.exception_handler,
-                      csr_exc_io.epc,
-                      exc_pc)
+        @always_comb
+        def _ex_assignments():
+            aluIO.input1.next        = ex_op1_data
+            aluIO.input2.next        = ex_op2_data
+            aluIO.function.next      = ex_alu_funct
+            aluIO.stall.next         = ctrlIO.full_stall
+            aluIO.kill.next          = ctrlIO.pipeline_kill
+            ex_data_out.next         = aluIO.output
+            ctrlIO.ex_req_stall.next = aluIO.req_stall
+            ctrlIO.ex_wb_we.next     = ex_wb_we
+            ctrlIO.ex_wb_addr.next   = ex_wb_addr
 
-    @always_comb
-    def _mem_assignments():
-        ctrlIO.dmem_pipeline.addr.next      = mem_alu_out
-        ctrlIO.dmem_pipeline.wdata.next     = mem_mem_wdata
-        ctrlIO.dmem_pipeline.fcn.next       = mem_mem_funct
-        ctrlIO.dmem_pipeline.typ.next       = mem_mem_type
-        ctrlIO.dmem_pipeline.valid.next     = mem_mem_valid
-        mem_mem_data.next                   = ctrlIO.dmem_pipeline.rdata
-        csr_exc_io.exception.next           = ctrlIO.csr_exception
-        csr_exc_io.exception_code.next      = ctrlIO.csr_exception_code
-        csr_exc_io.eret.next                = ctrlIO.csr_eret
-        csr_exc_io.exception_load_addr.next = mem_alu_out
-        csr_exc_io.exception_pc.next        = mem_pc
-        csr_rw.addr.next                    = mem_csr_addr
-        csr_rw.cmd.next                     = mem_csr_cmd
-        csr_rw.wdata.next                   = mem_csr_wdata
-        mem_csr_rdata.next                  = csr_rw.rdata
-        ctrlIO.mem_wb_we.next               = mem_wb_we
-        ctrlIO.mem_wb_addr.next             = mem_wb_addr
+        # MEM stage
+        # ----------------------------------------------------------------------
+        @always(clk.posedge)
+        def exmem():
+            if rst == 1:
+                mem_pc.next           = 0
+                mem_mem_valid.next    = False
+                mem_alu_out.next      = 0
+                mem_mem_wdata.next    = 0
+                mem_mem_type.next     = Consts.MT_X
+                mem_mem_funct.next    = Consts.M_X
+                mem_mem_data_sel.next = Consts.WB_X
+                mem_wb_addr.next      = 0
+                mem_wb_we.next        = False
+                mem_csr_addr.next     = 0
+                mem_csr_wdata.next    = 0
+                mem_csr_cmd.next      = CSRCMD.CSR_IDLE
+            else:
+                mem_pc.next           = (mem_pc if ctrlIO.full_stall else ex_pc)
+                mem_alu_out.next      = (mem_alu_out if ctrlIO.full_stall else ex_data_out)
+                mem_mem_wdata.next    = (mem_mem_wdata if ctrlIO.full_stall else ex_mem_wdata)
+                mem_mem_type.next     = (mem_mem_type if ctrlIO.full_stall else ex_mem_type)
+                mem_mem_funct.next    = (mem_mem_funct if ctrlIO.full_stall else ex_mem_funct)
+                mem_mem_data_sel.next = (mem_mem_data_sel if ctrlIO.full_stall else ex_mem_data_sel)
+                mem_wb_addr.next      = (mem_wb_addr if ctrlIO.full_stall else ex_wb_addr)
+                mem_csr_addr.next     = (mem_csr_addr if ctrlIO.full_stall else ex_csr_addr)
+                mem_csr_wdata.next    = (mem_csr_wdata if ctrlIO.full_stall else ex_csr_wdata)
+                mem_mem_valid.next    = (mem_mem_valid if ctrlIO.full_stall else (False if ctrlIO.pipeline_kill else ex_mem_valid))
+                mem_wb_we.next        = (mem_wb_we if ctrlIO.full_stall else (False if ctrlIO.pipeline_kill else ex_wb_we))
+                mem_csr_cmd.next      = (mem_csr_cmd if (ctrlIO.full_stall) else (modbv(CSRCMD.CSR_IDLE)[CSRCMD.SZ_CMD:] if ctrlIO.pipeline_kill else ex_csr_cmd))
 
-    # WB stage
-    # ----------------------------------------------------------------------
-    @always(clk.posedge)
-    def memwb():
-        if rst == 1:
-            wb_pc.next       = 0
-            wb_wb_addr.next  = 0
-            wb_wb_wdata.next = 0
-            wb_wb_we.next    = False
-        else:
-            wb_pc.next       = (wb_pc if ctrlIO.full_stall else mem_pc)
-            wb_wb_addr.next  = (wb_wb_addr if ctrlIO.full_stall else mem_wb_addr)
-            wb_wb_wdata.next = (wb_wb_wdata if ctrlIO.full_stall else mem_wb_wdata)
-            wb_wb_we.next    = (wb_wb_we if ctrlIO.full_stall else (False if ctrlIO.pipeline_kill else mem_wb_we))
+        csr = CSR(clk,  # noqa
+                  rst,
+                  csr_rw,
+                  csr_exc_io,
+                  ctrlIO.csr_retire,
+                  ctrlIO.csr_prv,
+                  ctrlIO.csr_illegal_access,
+                  ctrlIO.full_stall,
+                  toHost)
 
-    @always_comb
-    def _wb_assignments():
-        wb_rf_writePort.wa.next = wb_wb_addr
-        wb_rf_writePort.wd.next = wb_wb_wdata
-        wb_rf_writePort.we.next = wb_wb_we
-        ctrlIO.wb_wb_we.next    = wb_wb_we
-        ctrlIO.wb_wb_addr.next  = wb_wb_addr
+        mdata_mux = Mux4(mem_mem_data_sel,  # noqa
+                         mem_alu_out,
+                         mem_mem_data,
+                         mem_csr_rdata,
+                         0x0BADF00D,
+                         mem_wb_wdata)
 
-    return instances()
+        exc_pc_mux = Mux2(ctrlIO.csr_eret,  # noqa
+                          csr_exc_io.exception_handler,
+                          csr_exc_io.epc,
+                          exc_pc)
+
+        @always_comb
+        def _mem_assignments():
+            ctrlIO.dmem_pipeline.addr.next      = mem_alu_out
+            ctrlIO.dmem_pipeline.wdata.next     = mem_mem_wdata
+            ctrlIO.dmem_pipeline.fcn.next       = mem_mem_funct
+            ctrlIO.dmem_pipeline.typ.next       = mem_mem_type
+            ctrlIO.dmem_pipeline.valid.next     = mem_mem_valid
+            mem_mem_data.next                   = ctrlIO.dmem_pipeline.rdata
+            csr_exc_io.exception.next           = ctrlIO.csr_exception
+            csr_exc_io.exception_code.next      = ctrlIO.csr_exception_code
+            csr_exc_io.eret.next                = ctrlIO.csr_eret
+            csr_exc_io.exception_load_addr.next = mem_alu_out
+            csr_exc_io.exception_pc.next        = mem_pc
+            csr_rw.addr.next                    = mem_csr_addr
+            csr_rw.cmd.next                     = mem_csr_cmd
+            csr_rw.wdata.next                   = mem_csr_wdata
+            mem_csr_rdata.next                  = csr_rw.rdata
+            ctrlIO.mem_wb_we.next               = mem_wb_we
+            ctrlIO.mem_wb_addr.next             = mem_wb_addr
+
+        # WB stage
+        # ----------------------------------------------------------------------
+        @always(clk.posedge)
+        def memwb():
+            if rst == 1:
+                wb_pc.next       = 0
+                wb_wb_addr.next  = 0
+                wb_wb_wdata.next = 0
+                wb_wb_we.next    = False
+            else:
+                wb_pc.next       = (wb_pc if ctrlIO.full_stall else mem_pc)
+                wb_wb_addr.next  = (wb_wb_addr if ctrlIO.full_stall else mem_wb_addr)
+                wb_wb_wdata.next = (wb_wb_wdata if ctrlIO.full_stall else mem_wb_wdata)
+                wb_wb_we.next    = (wb_wb_we if ctrlIO.full_stall else (False if ctrlIO.pipeline_kill else mem_wb_we))
+
+        @always_comb
+        def _wb_assignments():
+            wb_rf_writePort.wa.next = wb_wb_addr
+            wb_rf_writePort.wd.next = wb_wb_wdata
+            wb_rf_writePort.we.next = wb_wb_we
+            ctrlIO.wb_wb_we.next    = wb_wb_we
+            ctrlIO.wb_wb_addr.next  = wb_wb_addr
+
+        return instances()
+
+    else: #Sin implementacion del BTB
+        # A stage
+        # ----------------------------------------------------------------------
+        pc_mux = Mux4(ctrlIO.pc_select1,  # noqa
+                      if_pc_next,
+                      id_pc_brjmp,
+                      id_pc_jalr,
+                      exc_pc,
+                      a_pc)
+
+        # IF stage
+        # ----------------------------------------------------------------------
+        @always(clk.posedge)
+        def pc():
+            if rst == 1:
+                if_pc.next = Consts.START_ADDR
+            else:
+                if (not ctrlIO.id_stall and not ctrlIO.full_stall) | ctrlIO.pipeline_kill:
+                    if_pc.next = a_pc
+
+        @always_comb
+        def _pc_next():
+            ctrlIO.imem_pipeline.addr.next  = if_pc
+            if_pc_next.next                 = if_pc + 4
+            if_instruction.next             = ctrlIO.imem_pipeline.rdata
+            ctrlIO.imem_pipeline.wdata.next = 0xDEADC0DE
+            ctrlIO.imem_pipeline.typ.next   = Consts.MT_W
+            ctrlIO.imem_pipeline.fcn.next   = Consts.M_RD
+            ctrlIO.imem_pipeline.valid.next = True
+
+        # ID stage
+        # ----------------------------------------------------------------------
+        @always(clk.posedge)
+        def ifid():
+            if rst == 1:
+                id_pc.next          = 0
+                id_instruction.next = Consts.BUBBLE
+            else:
+                id_pc.next          = (id_pc if ctrlIO.id_stall or ctrlIO.full_stall else (if_pc))
+                id_instruction.next = (id_instruction if ctrlIO.id_stall or ctrlIO.full_stall else
+                                       (Consts.BUBBLE if ctrlIO.pipeline_kill or ctrlIO.if_kill else
+                                        (if_instruction)))
+
+        reg_file = RegisterFile(clk,  # noqa
+                                id_rf_portA,
+                                id_rf_portB,
+                                wb_rf_writePort)
+
+        op1_data_fwd = Mux4(ctrlIO.id_fwd1_select,  # noqa
+                            id_rs1_data,
+                            ex_data_out,
+                            mem_wb_wdata,
+                            wb_wb_wdata,
+                            id_op1)
+
+        op2_data_fwd = Mux4(ctrlIO.id_fwd2_select,  # noqa
+                            id_rs2_data,
+                            ex_data_out,
+                            mem_wb_wdata,
+                            wb_wb_wdata,
+                            id_op2)
+
+        imm_gen = IMMGen(ctrlIO.id_sel_imm,  # noqa
+                         id_instruction,
+                         id_imm)
+
+        op1_mux = Mux4(ctrlIO.id_op1_select,  # noqa
+                       id_op1,
+                       id_pc,
+                       0x00000000,
+                       0x00000BAD,
+                       id_op1_data)
+
+        op2_mux = Mux4(ctrlIO.id_op2_select,  # noqa
+                       id_op2,
+                       id_imm,
+                       0x00000004,
+                       0x00000000,
+                       id_op2_data)
+
+        @always_comb
+        def _id_assignment():
+            ctrlIO.id_instruction.next     = id_instruction
+            id_rf_portA.ra.next            = id_instruction[20:15]
+            id_rf_portB.ra.next            = id_instruction[25:20]
+            ctrlIO.id_rs1_addr.next        = id_instruction[20:15]
+            ctrlIO.id_rs2_addr.next        = id_instruction[25:20]
+            id_rs1_data.next               = id_rf_portA.rd
+            id_rs2_data.next               = id_rf_portB.rd
+            id_wb_addr.next                = id_instruction[12:7]
+            id_csr_addr.next               = id_instruction[32:20]
+            id_mem_wdata.next              = id_op2
+            id_pc_brjmp.next               = id_pc.signed() + id_imm.signed()
+            id_pc_jalr.next                = (id_op1.signed() + id_imm.signed()) & ~0x01
+            id_csr_addr.next               = id_instruction[32:20]
+            id_csr_cmd.next                = ctrlIO.id_csr_cmd
+            id_csr_wdata.next              = id_instruction[20:15] if id_instruction[14] else id_op1
+            ctrlIO.id_next_pc.next         = a_pc
+            ctrlIO.csr_interrupt.next      = csr_exc_io.interrupt
+            ctrlIO.csr_interrupt_code.next = csr_exc_io.interrupt_code
+            ctrlIO.id_op1.next             = id_op1
+            ctrlIO.id_op2.next             = id_op2
+
+        # EX stage
+        # ----------------------------------------------------------------------
+        @always(clk.posedge)
+        def idex():
+            if rst == 1:
+                ex_pc.next           = 0
+                ex_op1_data.next     = 0
+                ex_op2_data.next     = 0
+                ex_alu_funct.next    = ALUOp.OP_ADD
+                ex_mem_type.next     = Consts.MT_X
+                ex_mem_funct.next    = Consts.M_X
+                ex_mem_valid.next    = False
+                ex_mem_wdata.next    = 0
+                ex_mem_data_sel.next = Consts.WB_X
+                ex_wb_addr.next      = 0
+                ex_wb_we.next        = False
+                ex_csr_addr.next     = 0
+                ex_csr_wdata.next    = 0
+                ex_csr_cmd.next      = CSRCMD.CSR_IDLE
+            else:
+                ex_pc.next           = (ex_pc if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_pc))
+                ex_op1_data.next     = (ex_op1_data if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_op1_data))
+                ex_op2_data.next     = (ex_op2_data if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_op2_data))
+                ex_alu_funct.next    = (ex_alu_funct if (ctrlIO.id_stall or ctrlIO.full_stall) else (ctrlIO.id_alu_funct))
+                ex_mem_type.next     = (ex_mem_type if (ctrlIO.id_stall or ctrlIO.full_stall) else (ctrlIO.id_mem_type))
+                ex_mem_wdata.next    = (ex_mem_wdata if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_mem_wdata))
+                ex_mem_data_sel.next = (ex_mem_data_sel if (ctrlIO.id_stall or ctrlIO.full_stall) else (ctrlIO.id_mem_data_sel))
+                ex_wb_addr.next      = (ex_wb_addr if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_wb_addr))
+                ex_csr_addr.next     = (ex_csr_addr if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_csr_addr))
+                ex_csr_wdata.next    = (ex_csr_wdata if (ctrlIO.id_stall or ctrlIO.full_stall) else (id_csr_wdata))
+                ex_mem_funct.next    = (ex_mem_funct if ctrlIO.full_stall else
+                                        (Consts.M_X if (ctrlIO.pipeline_kill or ctrlIO.id_kill or (ctrlIO.id_stall and not ctrlIO.full_stall)) else
+                                         (ctrlIO.id_mem_funct)))
+                ex_mem_valid.next    = (ex_mem_valid if ctrlIO.full_stall else
+                                        (False if (ctrlIO.pipeline_kill or ctrlIO.id_kill or (ctrlIO.id_stall and not ctrlIO.full_stall)) else
+                                         (ctrlIO.id_mem_valid)))
+                ex_wb_we.next        = (ex_wb_we if ctrlIO.full_stall else
+                                        (False if (ctrlIO.pipeline_kill or ctrlIO.id_kill or (ctrlIO.id_stall and not ctrlIO.full_stall)) else
+                                         (ctrlIO.id_wb_we)))
+                ex_csr_cmd.next      = (ex_csr_cmd if ctrlIO.full_stall else
+                                        (modbv(CSRCMD.CSR_IDLE)[CSRCMD.SZ_CMD:] if (ctrlIO.pipeline_kill or ctrlIO.id_kill or (ctrlIO.id_stall and not ctrlIO.full_stall)) else
+                                         (id_csr_cmd)))
+
+        alu = ALU(clk, rst, aluIO)  # noqa
+
+        @always_comb
+        def _ex_assignments():
+            aluIO.input1.next        = ex_op1_data
+            aluIO.input2.next        = ex_op2_data
+            aluIO.function.next      = ex_alu_funct
+            aluIO.stall.next         = ctrlIO.full_stall
+            aluIO.kill.next          = ctrlIO.pipeline_kill
+            ex_data_out.next         = aluIO.output
+            ctrlIO.ex_req_stall.next = aluIO.req_stall
+            ctrlIO.ex_wb_we.next     = ex_wb_we
+            ctrlIO.ex_wb_addr.next   = ex_wb_addr
+
+        # MEM stage
+        # ----------------------------------------------------------------------
+        @always(clk.posedge)
+        def exmem():
+            if rst == 1:
+                mem_pc.next           = 0
+                mem_mem_valid.next    = False
+                mem_alu_out.next      = 0
+                mem_mem_wdata.next    = 0
+                mem_mem_type.next     = Consts.MT_X
+                mem_mem_funct.next    = Consts.M_X
+                mem_mem_data_sel.next = Consts.WB_X
+                mem_wb_addr.next      = 0
+                mem_wb_we.next        = False
+                mem_csr_addr.next     = 0
+                mem_csr_wdata.next    = 0
+                mem_csr_cmd.next      = CSRCMD.CSR_IDLE
+            else:
+                mem_pc.next           = (mem_pc if ctrlIO.full_stall else ex_pc)
+                mem_alu_out.next      = (mem_alu_out if ctrlIO.full_stall else ex_data_out)
+                mem_mem_wdata.next    = (mem_mem_wdata if ctrlIO.full_stall else ex_mem_wdata)
+                mem_mem_type.next     = (mem_mem_type if ctrlIO.full_stall else ex_mem_type)
+                mem_mem_funct.next    = (mem_mem_funct if ctrlIO.full_stall else ex_mem_funct)
+                mem_mem_data_sel.next = (mem_mem_data_sel if ctrlIO.full_stall else ex_mem_data_sel)
+                mem_wb_addr.next      = (mem_wb_addr if ctrlIO.full_stall else ex_wb_addr)
+                mem_csr_addr.next     = (mem_csr_addr if ctrlIO.full_stall else ex_csr_addr)
+                mem_csr_wdata.next    = (mem_csr_wdata if ctrlIO.full_stall else ex_csr_wdata)
+                mem_mem_valid.next    = (mem_mem_valid if ctrlIO.full_stall else (False if ctrlIO.pipeline_kill else ex_mem_valid))
+                mem_wb_we.next        = (mem_wb_we if ctrlIO.full_stall else (False if ctrlIO.pipeline_kill else ex_wb_we))
+                mem_csr_cmd.next      = (mem_csr_cmd if (ctrlIO.full_stall) else (modbv(CSRCMD.CSR_IDLE)[CSRCMD.SZ_CMD:] if ctrlIO.pipeline_kill else ex_csr_cmd))
+
+        csr = CSR(clk,  # noqa
+                  rst,
+                  csr_rw,
+                  csr_exc_io,
+                  ctrlIO.csr_retire,
+                  ctrlIO.csr_prv,
+                  ctrlIO.csr_illegal_access,
+                  ctrlIO.full_stall,
+                  toHost)
+
+        mdata_mux = Mux4(mem_mem_data_sel,  # noqa
+                         mem_alu_out,
+                         mem_mem_data,
+                         mem_csr_rdata,
+                         0x0BADF00D,
+                         mem_wb_wdata)
+
+        exc_pc_mux = Mux2(ctrlIO.csr_eret,  # noqa
+                          csr_exc_io.exception_handler,
+                          csr_exc_io.epc,
+                          exc_pc)
+
+        @always_comb
+        def _mem_assignments():
+            ctrlIO.dmem_pipeline.addr.next      = mem_alu_out
+            ctrlIO.dmem_pipeline.wdata.next     = mem_mem_wdata
+            ctrlIO.dmem_pipeline.fcn.next       = mem_mem_funct
+            ctrlIO.dmem_pipeline.typ.next       = mem_mem_type
+            ctrlIO.dmem_pipeline.valid.next     = mem_mem_valid
+            mem_mem_data.next                   = ctrlIO.dmem_pipeline.rdata
+            csr_exc_io.exception.next           = ctrlIO.csr_exception
+            csr_exc_io.exception_code.next      = ctrlIO.csr_exception_code
+            csr_exc_io.eret.next                = ctrlIO.csr_eret
+            csr_exc_io.exception_load_addr.next = mem_alu_out
+            csr_exc_io.exception_pc.next        = mem_pc
+            csr_rw.addr.next                    = mem_csr_addr
+            csr_rw.cmd.next                     = mem_csr_cmd
+            csr_rw.wdata.next                   = mem_csr_wdata
+            mem_csr_rdata.next                  = csr_rw.rdata
+            ctrlIO.mem_wb_we.next               = mem_wb_we
+            ctrlIO.mem_wb_addr.next             = mem_wb_addr
+
+        # WB stage
+        # ----------------------------------------------------------------------
+        @always(clk.posedge)
+        def memwb():
+            if rst == 1:
+                wb_pc.next       = 0
+                wb_wb_addr.next  = 0
+                wb_wb_wdata.next = 0
+                wb_wb_we.next    = False
+            else:
+                wb_pc.next       = (wb_pc if ctrlIO.full_stall else mem_pc)
+                wb_wb_addr.next  = (wb_wb_addr if ctrlIO.full_stall else mem_wb_addr)
+                wb_wb_wdata.next = (wb_wb_wdata if ctrlIO.full_stall else mem_wb_wdata)
+                wb_wb_we.next    = (wb_wb_we if ctrlIO.full_stall else (False if ctrlIO.pipeline_kill else mem_wb_we))
+
+        @always_comb
+        def _wb_assignments():
+            wb_rf_writePort.wa.next = wb_wb_addr
+            wb_rf_writePort.wd.next = wb_wb_wdata
+            wb_rf_writePort.we.next = wb_wb_we
+            ctrlIO.wb_wb_we.next    = wb_wb_we
+            ctrlIO.wb_wb_addr.next  = wb_wb_addr
+
+        return instances()
 
 # Local Variables:
 # flycheck-flake8-maximum-line-length: 200
