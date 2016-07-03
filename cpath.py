@@ -713,12 +713,8 @@ def Ctrlpath(clk,
 
     @always_comb    ##HAY QUE ACOMODAR
     def _pc_select2(): #bp.current_state debe añadirse al dpath, y del dpath como una señal de control
-        io.pc_select2.next =    (modbv(Consts.PC_BRJMP)[Consts.SZ_PC_SEL:]  if ((id_br_type == Consts.BR_NE and not id_eq and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or #No salte y debi saltar
-                                                                                (id_br_type == Consts.BR_EQ and id_eq and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
-                                                                                (id_br_type == Consts.BR_LT and id_lt and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
-                                                                                (id_br_type == Consts.BR_LTU and id_ltu and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
-                                                                                (id_br_type == Consts.BR_GE and not id_lt and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
-                                                                                (id_br_type == Consts.BR_GEU and not id_ltu) and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) else
+                                                                            # OJO El branch_taken tiene el jump que no considerabamos antes
+        io.pc_select2.next =    (modbv(Consts.PC_BRJMP)[Consts.SZ_PC_SEL:]  if (bp.branch_taken and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) else
                                 (modbv(Consts.PC_ID)[Consts.SZ_PC_SEL:]     if ((id_br_type == Consts.BR_NE and id_eq and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
                                                                                 (id_br_type == Consts.BR_EQ and not id_eq and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
                                                                                 (id_br_type == Consts.BR_LT and not id_lt and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
