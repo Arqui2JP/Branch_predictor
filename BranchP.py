@@ -24,6 +24,7 @@ class BranchPIO()
         self.predict            = Signal(modbv(0)[2:0]) #Bits correspondientes a estado maquina de estado(hacia el control) Tampoco me acuerdo para que era esto :)
         self.btb_npc            = Signal(modbv(0)[32:])     #Va al dpath. Salida del btb- entrada al multiplexor
         self.branch_taken       = Signal(False) #SEÑAL QUE SALE DE ID HAY QUE CONECTARLA    
+        self.current_state      = Signal(modbv(0)[1:0])
         #Fin cambio
 
 def BranchP(clk,
@@ -86,6 +87,7 @@ def BranchP(clk,
         bp_states_m = enum('IDLE',
                            'READ',
                            'WRITE',
+
                            'FLUSH',
                            'FLUSH_LAST')
         """
@@ -103,28 +105,29 @@ def BranchP(clk,
         prediction         = Signal(False)
         final_write        = Signal(False)
         final_flush        = Signal(False)
-
+        final_miss         = Signal(False)
 
         #SEÑALES DEL Branch Target Address Cache 
         tag_pc             = Signal(modbv(0)[TAG_WIDTH:]) # se utilizara if_pc como etiqueta, REVISAR TAMAÑO
         adress_target      = Signal(modbv(0)[D_WIDTH:])   # direccion de salto, REVISAR TAMAÑO
         valid_bit          = Signal(False)                # Bit de validez. Indica si la instruccion de salto esta en el BTB. (MISS)
-        current_state      = Signal(modbv(0)[2:])
-        
+        ####################
+        current_state      = Signal(modbv(0)[2:])         # OJO- SE;AL QUE DEBE IR A CONTROL
+        ####################
 #Cambio tama;o de registro
         #                                 
         #                         ESTRUCTURA INTERNA DEL BTB
         #
-        #        VALID    INCONDITIONAL          TAG            ADRESS_TARGET     BTB STATE  
-        #        1 bit       1 bit            32 bits              32 bits         2 bits           
+        #        VALID    INCONDITIONAL         TAG            ADDRESS_TARGET     BTB STATE  
+        #        1 bit       1 bit            30 bits              30 bits         2 bits           
         #     |          |            |                     |                 |            |
         #     |          |            |                     |                 |            | 
         #     |          |            |                     |                 |            | 
-        #     -67    67 - 66        66-65                 34 - 33            2 - 1        0 -    
+        #     - 63    63 - 62      62 - 61               32 - 31            2 - 1        0 -    
         #
         # --------------------------------------------------------------------------
 
-        LINE_LENGTH         = 68
+        LINE_LENGTH         = 64
         SET_NUMBER          = 64
         ADDRESS_WIDTH       = 32
         WAY_WIDTH           = 2 + 6                     # BLOCK_WIDTH + SET_WIDTH (2+6)
@@ -132,24 +135,29 @@ def BranchP(clk,
         TAG_WIDTH           = 26                        # Tamaño del TAG, un poco menor al tamaño total del pc   
         WAYS                = 2
 
-        position_hit        = 0
+        
 #Fin de cambio
 
         @always_comb
         def assignments():
         #Inicializacion del BTB
-        for i in range(0,SET_NUMBER)
-            direction[i] = Signal(modbv(0)[LINE_LENGTH:0])
+            if rst:
+                position_hit       = -1
+                for i in range(0,SET_NUMBER)
+                    btb_line[i].next = Signal(modbv(0)[LINE_LENGTH:0])
 
         @always_comb
         def miss_check():
             for i in range(0, SET_NUMBER):
-                if  (tag_pc[32:] == direction[i][65:34])
-                    valid_bit.next = True
-                    position_hit   = i
-                    state_m        = bp_states_m.READ
-                else
-                    state_m        = bp_states_m.WRITE
+                if  (tag_pc[32:2] == btb_line[i][63:32])
+                    valid_bit.next      = True
+                    position_hit.next   = i
+                    state_m.next        = bp_states_m.READ
+                    final_miss.next     = 1
+            if (position_hit < 0) and final_miss
+                    state_m.next        = bp_states_m.WRITE
+                    final_miss.next     = 0
+
 
         @always(clk.posedge)
         def btb():
@@ -170,24 +178,28 @@ def BranchP(clk,
         @always_comb
         def write_process1():
             if state_m == bp_states_m.WRITE:
-                direction[i][67]        = True
-                direction[i][65:34]     = tag_pc[32:]
+                btb_line[i][67].next        = True
+                btb_line[i][65:34].next     = tag_pc[32:2]
                 if bp.valid_jump
-                    direction[i][66]    = True
-                    direction[i][33:2]  = pc_id_brjmp
+                    btb_line[i][66].next    = True
+                    btb_line[i][33:2].next  = pc_id_brjmp
                 if bp.valid_branch
-                    direction[i][66]    = False
-                    direction[i][33:2]  = pc_id_brjmp
-                if bp_states_p = bp_states_p.ST
-                    direction[i][1:0]   = 11
-                if bp_states_p = bp_states_p.WT
-                    direction[i][1:0]   = 10
-                if bp_states_p = bp_states_p.WN
-                    direction[i][1:0]   = 01
-                if bp_states_p = bp_states_p.SN
-                    direction[i][1:0]   = 00
+                    btb_line[i][66].next    = False
+                    btb_line[i][33:2].next  = pc_id_brjmp
+                if bp_states_p == bp_states_p.ST
+                    btb_line[i][1:0].next   = 11
+                    current_state.next      = 11
+                if bp_states_p == bp_states_p.WT
+                    btb_line[i][1:0].next   = 10
+                    current_state.next      = 10
+                if bp_states_p == bp_states_p.WN
+                    btb_line[i][1:0].next   = 01
+                    current_state.next      = 01
+                if bp_states_p == bp_states_p.SN
+                    btb_line[i][1:0].next   = 00
+                    current_state.next      = 00
 
-                final_write             = True
+                final_write.next            = True
                 #blablablablabla
 
                 if BPio.branch_taken == True
@@ -198,9 +210,9 @@ def BranchP(clk,
         @always_comb
         def read_process():
             if state_m == bp_states_m.READ:
-                BPio.btb_npc.next = direction[position_hit][33:2]
-                position_hit      = 0
-
+                BPio.btb_npc.next       = concat(btb_line[position_hit][31:2], Signal(modbv(0)[1:]))
+                position_hit.next       = -1
+                current_state.next      = btb_line[position_hit][1:]
         @always_comb
         def 
 
