@@ -136,9 +136,9 @@ def Datapath(clk,
                       ctrlBP.btb_npc,
                       btb_pc)
         
-        mux_pc = Mux2(ctrlIO.pc_select3,  #Selector 
-                      btb_pc
+        mux_pc = Mux2(ctrlIO.pc_select3,  #Selector
                       exc_pc,
+                      btb_pc,
                       a_pc)
                       #Cambio
         # IF stage
