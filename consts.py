@@ -37,18 +37,30 @@ class Consts:
     _PC_BRJMP  = modbv(1)[SZ_PC_SEL:]
     _PC_JALR   = modbv(2)[SZ_PC_SEL:]
     _PC_EXC    = modbv(3)[SZ_PC_SEL:]
-	
-	# PC Select Signal BP enable
-	PC_NBTB		= 0
-	PC_BTB		= 1
-	_PC_NBTB    = modbv(0)[SZ_PC_SEL:]
-    _PC_BTB     = modbv(1)[SZ_PC_SEL:]
-	
-	#PC select signal. BTB MUX
-	PC_ID		= 2
-	PC_BTB_NPC	= 3
-	_PC_ID   	= modbv(2)[SZ_PC_SEL:]
-	_PC_BTB_NPC = modbv(3)[SZ_PC_SEL:]
+
+    # PC Select Signal BP enable
+    SZ_PC_SEL2	= 1
+    PC_EXC_BTB	= 0
+    PC_BTB	= 1
+    _PC_EXC_BTB = modbv(0)[SZ_PC_SEL2:]
+    _PC_BTB     = modbv(1)[SZ_PC_SEL2:]
+    
+    #PC select signal. BTB MUX
+    PC_ID	= 2
+    PC_BTB_NPC	= 3
+    _PC_ID   	= modbv(2)[SZ_PC_SEL:]
+    _PC_BTB_NPC = modbv(3)[SZ_PC_SEL:]
+    
+    #Branch Prediction
+    SZ_STATE	= 2
+    SN		= 0
+    WN		= 1
+    WT		= 2
+    ST		= 3
+    _SN		= modbv(0)[SZ_STATE:]
+    _WN  	= modbv(1)[SZ_STATE:]
+    _WT  	= modbv(2)[SZ_STATE:]
+    _ST  	= modbv(3)[SZ_STATE:]
 	
     # Branch type
     SZ_BR      = 4
