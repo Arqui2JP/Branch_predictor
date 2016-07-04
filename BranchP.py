@@ -210,7 +210,9 @@ def BranchP(clk,
             if (BPio.current_state == Consts.WT and change_state == True):
                 btb_line[index_btb][1:].next = Consts.ST
 
-
+            if (BPio.current_state == Const.ST and change_state == True) or (BPio.current_state == Const.SN and change_state == False):
+                btb_line[index_btb][1:].next = btb_line[index_btb][1:]
+                
             final_write2.next = True
             
 
