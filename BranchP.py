@@ -21,9 +21,9 @@ class BranchPIO():
         self.pc_id              = Signal(modbv(0)[32:])     #viene del dpath
         self.pc_id_brjmp        = Signal(modbv(0)[32:])     #viene del dpath
         self.pc_id_jalr         = Signal(modbv(0)[32:])
-        self.predict            = Signal(modbv(0)[2:0])     #Bits correspondientes a estado maquina de estado(hacia el control) Tampoco me acuerdo para que era esto :)
+        self.predict            = Signal(modbv(0)[2:0]) #Bits correspondientes a estado maquina de estado(hacia el control) Tampoco me acuerdo para que era esto :)
         self.btb_npc            = Signal(modbv(0)[32:])     #Va al dpath. Salida del btb- entrada al multiplexor
-        self.branch_taken       = Signal(False)             #SE;AL QUE SALE DE ID  
+        self.branch_taken       = Signal(False)             #SE;AL QUE SALE DE ID HAY QUE CONECTARLA    
         self.current_state      = Signal(modbv(0)[1:0])
         self.change_state       = Signal(modbv(0)[1:0])
         self.fullStallReq       = Signal(False)
@@ -63,11 +63,12 @@ def BranchP(clk,
     final_flush        = Signal(False)
     index_btb          = Signal(modbv(0)[6:0])
     #SE;ALES DEL Branch Target Address Cache 
-    tag_pc             = Signal(modbv(0)[31:]) # se utilizara if_pc como etiqueta, REVISAR TAMAnO
-    adress_target      = Signal(modbv(0)[31:])   # direccion de salto, REVISAR TAMAnO
+    #tag_pc             = Signal(modbv(0)[32:]) # se utilizara if_pc como etiqueta, REVISAR TAMAnO
+    adress_target      = Signal(modbv(0)[32:])   # direccion de salto, REVISAR TAMAnO
     valid_bit          = Signal(False)                # Bit de validez. Indica si la instruccion de salto esta en el BTB. (MISS)
     clear_done         = Signal(False)
     miracle            = Signal(modbv(0)[1:]) 
+    index_r            = Signal(modbv(0)[6:])
     ####################
     current_state      = Signal(modbv(0)[2:])         # OJO- SE;AL QUE DEBE IR A CONTROL
     ####################
@@ -109,7 +110,7 @@ def BranchP(clk,
     def read_process():
         if state_m == bp_states_m.READ:
             for i in range(0, SET_NUMBER):
-                if  (tag_pc[33:2] == btb_line[i][61:32]):
+                if  (BPio.pc_if[32:2] == btb_line[i][62:32]):
 
                     valid_bit.next      = True
                     index_btb.next      = modbv(i)[6:]
@@ -120,13 +121,13 @@ def BranchP(clk,
 
                     BPio.hit.next            = True
                     n_state_m.next           = bp_states_m.WRITE2
-                if(i==SET_NUMBER-1):
-                    fantasy.next    = True
+                #if(i==SET_NUMBER-1):
+            fantasy.next    = True
 
     @always_comb
-    def read_process():
+    def read_process2():
         if fantasy and not BPio.hit:
-                    n_state_m.next        = bp_states_m.WRITE1
+            n_state_m.next  = bp_states_m.WRITE1
 
  
     
@@ -145,27 +146,27 @@ def BranchP(clk,
             state_m.next = n_state_m
 
 #Se cambio consistente con el cambio de tamano de registro
-    @always_comb
+    @always(clk.posedge)
     def write_process1():
         if state_m == bp_states_m.WRITE1:
-            index_r                           = random[26:20]
-            index_btb.next                    = modbv(index_r)[6:]
-            btb_line[index_r][63].next        = True
-            btb_line[index_r][61:32].next     = tag_pc[32:2]
-            btb_line[index_r][31:2].next      = pc_id_brjmp
+            index_btb.next                    = modbv(random[26:20])[6:]
+            btb_line[random[26:20]][64:63].next     = True
+            btb_line[random[26:20]][61:32].next     = BPio.pc_id[32:2]
+            btb_line[random[26:20]][31:2].next      = BPio.pc_id_brjmp
 
             if BPio.valid_jump:
-                btb_line[index_r][62].next    = True
-                btb_line[index_r][1:0].next   = Consts.ST      #Primer guardado se toma como ST, si es un jump
+                btb_line[random[26:20]][62].next    = True
+                btb_line[random[26:20]][1:0].next   = Consts.ST      #Primer guardado se toma como ST, si es un jump
                 #Envio al cpath del estado base (jump=ST)
                 BPio.current_state.next       = Consts.ST      #Lo que se envia al cpath
             if BPio.valid_branch:
-                btb_line[index_r][62].next    = False
-                btb_line[index_r][1:0].next   = Consts.WN      #Primer guardado se toma como WN, si es un branch
+                btb_line[random[26:20]][63:62].next    = False
+                btb_line[random[26:20]][1:0].next   = Consts.WN      #Primer guardado se toma como WN, si es un branch
                 #Envio al cpath del estado base
                 BPio.current_state.next       = Consts.WN      #Lo que se envia al cpath
 
-            final_write1.next                  = True
+        final_write1.next                  = True
+
 
     @always_comb
     def write_process2():
@@ -199,7 +200,7 @@ def BranchP(clk,
                 btb_line[i].next  = 0
         clear_done.next = True
 
-    @always_comb
+    @always(clk.posedge)
     def next_state_logic_m(): #MAQUINA DE ESTADOS
         n_state_m.next = state_m
         
@@ -214,13 +215,15 @@ def BranchP(clk,
             elif rst == 1:
                 n_state_m.next = bp_states_m.CLEAR
         elif state_m == bp_states_m.WRITE1:
+            fantasy.next = False
             if final_write1:
                 n_state_m.next = bp_states_m.WRITE2
-                final_write1   = False
+                final_write1.next = False
         elif state_m == bp_states_m.WRITE2:
             if final_write2:
                 n_state_m.next = bp_states_m.IDLE
-                final_write2   = False
+                final_write2.next   = False
+
     @always_comb
     def clear_cure():
         if (state_m != bp_states_m.CLEAR):
