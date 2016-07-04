@@ -40,7 +40,7 @@ from Core.imm_gen import IMMGen
 from Core.mux import Mux4
 from Core.mux import Mux2
 from Core.BranchP import BranchP
-
+from Core.BranchP import BranchPIO
 
 def Datapath(clk,
              rst,
@@ -61,6 +61,9 @@ def Datapath(clk,
     if_instruction   = Signal(modbv(0)[32:])
     if_pc_next       = Signal(modbv(0)[32:])
     id_pc            = Signal(modbv(0)[32:])
+    btb_pc           = Signal(modbv(0)[32:])
+
+    id_pc_next  = Signal (modbv (0)[32:0])
     id_instruction   = Signal(modbv(0)[32:])
     id_rf_portA      = RFReadPort()
     id_rf_portB      = RFReadPort()
@@ -121,9 +124,9 @@ def Datapath(clk,
 
     if ENABLE_BP: #Con implementacion del BTB
 
-        branchp = BranchP(clk_i,
-                          rst_i,
-                          ctrl_bp)
+        branchp = BranchP(clk,
+                          rst,
+                          ctrlBP)
         """
         The Branch Predictor module.
         :param clk:         System clock

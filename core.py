@@ -35,7 +35,6 @@ def Core(clk_i,
          imem,
          dmem,
          toHost,
-         # Configuration parameters
          IC_ENABLE=True,
          IC_BLOCK_WIDTH=3,
          IC_SET_WIDTH=8,
@@ -60,7 +59,7 @@ def Core(clk_i,
     :param DC_BLOCK_WIDTH: Number of bits needed to address the bytes in a line (D$)
     :param DC_SET_WIDTH:   Number of bits needed to address a cache line (D$)
     :param DC_NUM_WAYS:    Cache associativity (D$)
-    :param BP_ENABLE:	Enable Branch Predictor
+    :param BP_ENABLE:   Enable Branch Predictor
     """
     ctrl_dpath   = CtrlIO()
     icache_flush = Signal(False)
@@ -69,21 +68,8 @@ def Core(clk_i,
     mem_intercon = WishboneIntercon()
     ctrl_bp      = BranchPIO() 
 
-    dpath = Datapath(clk_i,
-                     rst_i,
-                     ctrl_dpath,
-                     ctrl_bp,
-                     toHost,
-                     ENABLE=BP_ENABLE)
-    cpath = Ctrlpath(clk_i,
-                     rst_i,
-                     ctrl_dpath,
-                     icache_flush,
-                     dcache_flush,
-                     cpu_intercon,
-                     mem_intercon,
-                     ctrl_bp,
-                     ENABLE=BP_ENABLE)
+
+
     icache = ICache(clk_i=clk_i,
                     rst_i=rst_i,
                     cpu=cpu_intercon,
@@ -95,6 +81,7 @@ def Core(clk_i,
                     SET_WIDTH=IC_SET_WIDTH,
                     WAYS=IC_NUM_WAYS,
                     LIMIT_WIDTH=32)
+
     dcache = DCache(clk_i=clk_i,
                     rst_i=rst_i,
                     cpu=mem_intercon,
@@ -106,6 +93,23 @@ def Core(clk_i,
                     SET_WIDTH=DC_SET_WIDTH,
                     WAYS=DC_NUM_WAYS,
                     LIMIT_WIDTH=32)
+
+    dpath = Datapath(clk_i,
+                     rst_i,
+                     ctrl_dpath,
+                     ctrl_bp,
+                     toHost,
+                     BP_ENABLE)
+
+    cpath = Ctrlpath(clk_i,
+                     rst_i,
+                     ctrl_dpath,
+                     icache_flush,
+                     dcache_flush,
+                     cpu_intercon,
+                     mem_intercon,
+                     ctrl_bp,
+                     BP_ENABLE)
 
     return dpath, cpath, icache, dcache
 

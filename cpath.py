@@ -41,6 +41,8 @@ from Core.instructions import FenceFunct3
 from Core.instructions import SystemFunct3
 from Core.instructions import PrivFunct12
 from Core.instructions import MulDivFunct
+from Core.BranchP import BranchPIO
+from Core.BranchP import BranchP
 
 
 Y = True
@@ -326,8 +328,15 @@ def Ctrlpath(clk,
 
     @always_comb
     def _ctrl_signal_assignment():
-        if opcode == Opcodes.RV32_BRANCH:
-            bp.valid_branch = True
+        if opcode == Opcodes.RV32_LUI:
+            control.next = CtrlSignals.LUI
+        elif opcode == Opcodes.RV32_AUIPC:
+            control.next = CtrlSignals.AUIPC
+        elif opcode == Opcodes.RV32_JAL:
+            control.next = CtrlSignals.JAL
+        elif opcode == Opcodes.RV32_JALR:
+            control.next = CtrlSignals.JALR
+        elif opcode == Opcodes.RV32_BRANCH:
             if funct3 == BranchFunct3.RV32_F3_BEQ:
                 control.next = CtrlSignals.BEQ
             elif funct3 == BranchFunct3.RV32_F3_BNE:
@@ -342,143 +351,130 @@ def Ctrlpath(clk,
                 control.next = CtrlSignals.BGEU
             else:
                 control.next = CtrlSignals.INVALID
-        elif opcode == Opcodes.RV32_JAL:
-            bp.valid_jump = True
-            control.next = CtrlSignals.JAL
-        elif opcode == Opcodes.RV32_JALR:
-            bp.valid_jump = True
-            control.next = CtrlSignals.JALR
-        elif
-            bp.valid_branch = False
-            bp.valid_jump = False
-            elif opcode == Opcodes.RV32_LUI:
-                control.next = CtrlSignals.LUI
-            elif opcode == Opcodes.RV32_AUIPC:
-                control.next = CtrlSignals.AUIPC
-            elif opcode == Opcodes.RV32_LOAD:
-                if funct3 == LoadFunct3.RV32_F3_LB:
-                    control.next = CtrlSignals.LB
-                elif funct3 == LoadFunct3.RV32_F3_LH:
-                    control.next = CtrlSignals.LH
-                elif funct3 == LoadFunct3.RV32_F3_LW:
-                    control.next = CtrlSignals.LW
-                elif funct3 == LoadFunct3.RV32_F3_LBU:
-                    control.next = CtrlSignals.LBU
-                elif funct3 == LoadFunct3.RV32_F3_LHU:
-                    control.next = CtrlSignals.LHU
+        elif opcode == Opcodes.RV32_LOAD:
+            if funct3 == LoadFunct3.RV32_F3_LB:
+                control.next = CtrlSignals.LB
+            elif funct3 == LoadFunct3.RV32_F3_LH:
+                control.next = CtrlSignals.LH
+            elif funct3 == LoadFunct3.RV32_F3_LW:
+                control.next = CtrlSignals.LW
+            elif funct3 == LoadFunct3.RV32_F3_LBU:
+                control.next = CtrlSignals.LBU
+            elif funct3 == LoadFunct3.RV32_F3_LHU:
+                control.next = CtrlSignals.LHU
+            else:
+                control.next = CtrlSignals.INVALID
+        elif opcode == Opcodes.RV32_STORE:
+            if funct3 == StoreFunct3.RV32_F3_SB:
+                control.next = CtrlSignals.SB
+            elif funct3 == StoreFunct3.RV32_F3_SH:
+                control.next = CtrlSignals.SH
+            elif funct3 == StoreFunct3.RV32_F3_SW:
+                control.next = CtrlSignals.SW
+            else:
+                control.next = CtrlSignals.INVALID
+        elif opcode == Opcodes.RV32_IMM:
+            if funct3 == ArithmeticFunct3.RV32_F3_ADD_SUB:
+                control.next = CtrlSignals.ADDI
+            elif funct3 == ArithmeticFunct3.RV32_F3_SLT:
+                control.next = CtrlSignals.SLTI
+            elif funct3 == ArithmeticFunct3.RV32_F3_SLTU:
+                control.next = CtrlSignals.SLTIU
+            elif funct3 == ArithmeticFunct3.RV32_F3_XOR:
+                control.next = CtrlSignals.XORI
+            elif funct3 == ArithmeticFunct3.RV32_F3_OR:
+                control.next = CtrlSignals.ORI
+            elif funct3 == ArithmeticFunct3.RV32_F3_AND:
+                control.next = CtrlSignals.ANDI
+            elif funct3 == ArithmeticFunct3.RV32_F3_SLL:
+                control.next = CtrlSignals.SLLI
+            elif funct3 == ArithmeticFunct3.RV32_F3_SRL_SRA:
+                if io.id_instruction[30]:
+                    control.next = CtrlSignals.SRAI
                 else:
-                    control.next = CtrlSignals.INVALID
-            elif opcode == Opcodes.RV32_STORE:
-                if funct3 == StoreFunct3.RV32_F3_SB:
-                    control.next = CtrlSignals.SB
-                elif funct3 == StoreFunct3.RV32_F3_SH:
-                    control.next = CtrlSignals.SH
-                elif funct3 == StoreFunct3.RV32_F3_SW:
-                    control.next = CtrlSignals.SW
-                else:
-                    control.next = CtrlSignals.INVALID
-            elif opcode == Opcodes.RV32_IMM:
+                    control.next = CtrlSignals.SRLI
+            else:
+                control.next = CtrlSignals.INVALID
+        elif opcode == Opcodes.RV32_OP:
+            if funct7 != MulDivFunct.RV32_F7_MUL_DIV:
                 if funct3 == ArithmeticFunct3.RV32_F3_ADD_SUB:
-                    control.next = CtrlSignals.ADDI
+                    if io.id_instruction[30]:
+                        control.next = CtrlSignals.SUB
+                    else:
+                        control.next = CtrlSignals.ADD
                 elif funct3 == ArithmeticFunct3.RV32_F3_SLT:
-                    control.next = CtrlSignals.SLTI
+                    control.next = CtrlSignals.SLT
                 elif funct3 == ArithmeticFunct3.RV32_F3_SLTU:
-                    control.next = CtrlSignals.SLTIU
+                    control.next = CtrlSignals.SLTU
                 elif funct3 == ArithmeticFunct3.RV32_F3_XOR:
-                    control.next = CtrlSignals.XORI
+                    control.next = CtrlSignals.XOR
                 elif funct3 == ArithmeticFunct3.RV32_F3_OR:
-                    control.next = CtrlSignals.ORI
+                    control.next = CtrlSignals.OR
                 elif funct3 == ArithmeticFunct3.RV32_F3_AND:
-                    control.next = CtrlSignals.ANDI
+                    control.next = CtrlSignals.AND
                 elif funct3 == ArithmeticFunct3.RV32_F3_SLL:
-                    control.next = CtrlSignals.SLLI
+                    control.next = CtrlSignals.SLL
                 elif funct3 == ArithmeticFunct3.RV32_F3_SRL_SRA:
                     if io.id_instruction[30]:
-                        control.next = CtrlSignals.SRAI
+                        control.next = CtrlSignals.SRA
                     else:
-                        control.next = CtrlSignals.SRLI
+                        control.next = CtrlSignals.SRL
                 else:
                     control.next = CtrlSignals.INVALID
-            elif opcode == Opcodes.RV32_OP:
-                if funct7 != MulDivFunct.RV32_F7_MUL_DIV:
-                    if funct3 == ArithmeticFunct3.RV32_F3_ADD_SUB:
-                        if io.id_instruction[30]:
-                            control.next = CtrlSignals.SUB
-                        else:
-                            control.next = CtrlSignals.ADD
-                    elif funct3 == ArithmeticFunct3.RV32_F3_SLT:
-                        control.next = CtrlSignals.SLT
-                    elif funct3 == ArithmeticFunct3.RV32_F3_SLTU:
-                        control.next = CtrlSignals.SLTU
-                    elif funct3 == ArithmeticFunct3.RV32_F3_XOR:
-                        control.next = CtrlSignals.XOR
-                    elif funct3 == ArithmeticFunct3.RV32_F3_OR:
-                        control.next = CtrlSignals.OR
-                    elif funct3 == ArithmeticFunct3.RV32_F3_AND:
-                        control.next = CtrlSignals.AND
-                    elif funct3 == ArithmeticFunct3.RV32_F3_SLL:
-                        control.next = CtrlSignals.SLL
-                    elif funct3 == ArithmeticFunct3.RV32_F3_SRL_SRA:
-                        if io.id_instruction[30]:
-                            control.next = CtrlSignals.SRA
-                        else:
-                            control.next = CtrlSignals.SRL
-                    else:
-                        control.next = CtrlSignals.INVALID
-                elif funct7 == MulDivFunct.RV32_F7_MUL_DIV:
-                    if funct3 == MulDivFunct.RV32_F3_MUL:
-                        control.next = CtrlSignals.MUL
-                    elif funct3 == MulDivFunct.RV32_F3_MULH:
-                        control.next = CtrlSignals.MULH
-                    elif funct3 == MulDivFunct.RV32_F3_MULHSU:
-                        control.next = CtrlSignals.MULHSU
-                    elif funct3 == MulDivFunct.RV32_F3_MULHU:
-                        control.next = CtrlSignals.MULHU
-                    elif funct3 == MulDivFunct.RV32_F3_DIV:
-                        control.next = CtrlSignals.DIV
-                    elif funct3 == MulDivFunct.RV32_F3_DIVU:
-                        control.next = CtrlSignals.DIVU
-                    elif funct3 == MulDivFunct.RV32_F3_REM:
-                        control.next = CtrlSignals.REM
-                    elif funct3 == MulDivFunct.RV32_F3_REMU:
-                        control.next = CtrlSignals.REMU
-                    else:
-                        control.next = CtrlSignals.INVALID
-                else:
-                    control.next = CtrlSignals.INVALID
-            elif opcode == Opcodes.RV32_FENCE:
-                if funct3 == FenceFunct3.RV32_F3_FENCE:
-                    control.next = CtrlSignals.FENCE
-                elif funct3 == FenceFunct3.RV32_F3_FENCE_I:
-                    control.next = CtrlSignals.FENCE_I
-                else:
-                    control.next = CtrlSignals.INVALID
-            elif opcode == Opcodes.RV32_SYSTEM:
-                if funct3 == SystemFunct3.RV32_F3_PRIV:
-                    if io.id_instruction[32:20] == PrivFunct12.RV32_F12_ECALL:
-                        control.next = CtrlSignals.ECALL
-                    elif io.id_instruction[32:20] == PrivFunct12.RV32_F12_EBREAK:
-                        control.next = CtrlSignals.EBREAK
-                    elif io.id_instruction[32:20] == PrivFunct12.RV32_F12_ERET:
-                        control.next = CtrlSignals.ERET
-                    else:
-                        control.next = CtrlSignals.INVALID
-                elif funct3 == SystemFunct3.RV32_F3_CSRRW:
-                    control.next = CtrlSignals.CSRRW
-                elif funct3 == SystemFunct3.RV32_F3_CSRRS:
-                    control.next = CtrlSignals.CSRRS
-                elif funct3 == SystemFunct3.RV32_F3_CSRRC:
-                    control.next = CtrlSignals.CSRRC
-                elif funct3 == SystemFunct3.RV32_F3_CSRRWI:
-                    control.next = CtrlSignals.CSRRWI
-                elif funct3 == SystemFunct3.RV32_F3_CSRRSI:
-                    control.next = CtrlSignals.CSRRSI
-                elif funct3 == SystemFunct3.RV32_F3_CSRRCI:
-                    control.next = CtrlSignals.CSRRCI
+            elif funct7 == MulDivFunct.RV32_F7_MUL_DIV:
+                if funct3 == MulDivFunct.RV32_F3_MUL:
+                    control.next = CtrlSignals.MUL
+                elif funct3 == MulDivFunct.RV32_F3_MULH:
+                    control.next = CtrlSignals.MULH
+                elif funct3 == MulDivFunct.RV32_F3_MULHSU:
+                    control.next = CtrlSignals.MULHSU
+                elif funct3 == MulDivFunct.RV32_F3_MULHU:
+                    control.next = CtrlSignals.MULHU
+                elif funct3 == MulDivFunct.RV32_F3_DIV:
+                    control.next = CtrlSignals.DIV
+                elif funct3 == MulDivFunct.RV32_F3_DIVU:
+                    control.next = CtrlSignals.DIVU
+                elif funct3 == MulDivFunct.RV32_F3_REM:
+                    control.next = CtrlSignals.REM
+                elif funct3 == MulDivFunct.RV32_F3_REMU:
+                    control.next = CtrlSignals.REMU
                 else:
                     control.next = CtrlSignals.INVALID
             else:
                 control.next = CtrlSignals.INVALID
+        elif opcode == Opcodes.RV32_FENCE:
+            if funct3 == FenceFunct3.RV32_F3_FENCE:
+                control.next = CtrlSignals.FENCE
+            elif funct3 == FenceFunct3.RV32_F3_FENCE_I:
+                control.next = CtrlSignals.FENCE_I
+            else:
+                control.next = CtrlSignals.INVALID
+        elif opcode == Opcodes.RV32_SYSTEM:
+            if funct3 == SystemFunct3.RV32_F3_PRIV:
+                if io.id_instruction[32:20] == PrivFunct12.RV32_F12_ECALL:
+                    control.next = CtrlSignals.ECALL
+                elif io.id_instruction[32:20] == PrivFunct12.RV32_F12_EBREAK:
+                    control.next = CtrlSignals.EBREAK
+                elif io.id_instruction[32:20] == PrivFunct12.RV32_F12_ERET:
+                    control.next = CtrlSignals.ERET
+                else:
+                    control.next = CtrlSignals.INVALID
+            elif funct3 == SystemFunct3.RV32_F3_CSRRW:
+                control.next = CtrlSignals.CSRRW
+            elif funct3 == SystemFunct3.RV32_F3_CSRRS:
+                control.next = CtrlSignals.CSRRS
+            elif funct3 == SystemFunct3.RV32_F3_CSRRC:
+                control.next = CtrlSignals.CSRRC
+            elif funct3 == SystemFunct3.RV32_F3_CSRRWI:
+                control.next = CtrlSignals.CSRRWI
+            elif funct3 == SystemFunct3.RV32_F3_CSRRSI:
+                control.next = CtrlSignals.CSRRSI
+            elif funct3 == SystemFunct3.RV32_F3_CSRRCI:
+                control.next = CtrlSignals.CSRRCI
+            else:
+                control.next = CtrlSignals.INVALID
+        else:
+            control.next = CtrlSignals.INVALID
 
     @always_comb
     def _assignments():
@@ -683,32 +679,26 @@ def Ctrlpath(clk,
 
     @always_comb
     def _cambio_estado():# Logica de cambio del estado del BTB, segun la prediccion hecha y  la condicion del branch encontrada
-        bp.change_state =   True    if ((id_br_type == Consts.BR_NE and not id_eq and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or 
-                                        (id_br_type == Consts.BR_EQ and id_eq and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
-                                        (id_br_type == Consts.BR_LT and id_lt and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
-                                        (id_br_type == Consts.BR_LTU and id_ltu and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
-                                        (id_br_type == Consts.BR_GE and not id_lt and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
-                                        (id_br_type == Consts.BR_GEU and not id_ltu) and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) else
-                            False   if  (bp.current_state == Consts.WN or bp.current_state == Consts.SN) else
+        bp.change_state.next =   (True if (((id_br_type == Consts.BR_NE and not id_eq and (bp.current_state == Consts.WN or bp.current_state == Consts.SN))) or 
+                                           (id_br_type == Consts.BR_EQ and id_eq and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
+                                           (id_br_type == Consts.BR_LT and id_lt and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
+                                           (id_br_type == Consts.BR_LTU and id_ltu and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
+                                           (id_br_type == Consts.BR_GE and not id_lt and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) or
+                                           ((id_br_type == Consts.BR_GEU and not id_ltu) and (bp.current_state == Consts.WN or bp.current_state == Consts.SN))) else
+                                    (False   if  (bp.current_state == Consts.WN or bp.current_state == Consts.SN) else
+                                        (False if ((id_br_type == Consts.BR_NE and id_eq and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
+                                                    (id_br_type == Consts.BR_EQ and not id_eq and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
+                                                    (id_br_type == Consts.BR_LT and not id_lt and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
+                                                    (id_br_type == Consts.BR_LTU and not id_ltu and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
+                                                    (id_br_type == Consts.BR_GE and id_lt and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
+                                                    ((id_br_type == Consts.BR_GEU and id_ltu) and (bp.current_state == Consts.WT or bp.current_state == Consts.ST))) else
+                                            (bp.current_state == Consts.WT or bp.current_state == Consts.ST))))
 
-                            False   if ((id_br_type == Consts.BR_NE and id_eq and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
-                                        (id_br_type == Consts.BR_EQ and not id_eq and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
-                                        (id_br_type == Consts.BR_LT and not id_lt and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
-                                        (id_br_type == Consts.BR_LTU and not id_ltu and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
-                                        (id_br_type == Consts.BR_GE and id_lt and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
-                                        (id_br_type == Consts.BR_GEU and id_ltu) and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) else
-                            True    if  (bp.current_state == Consts.WT or bp.current_state == Consts.ST)
-
-        bp.branch_taken =   True    if ((id_br_type == Consts.BR_J) or
-                                        (id_br_type == Consts.BR_NE and not id_eq) or
-                                        (id_br_type == Consts.BR_EQ and id_eq) or
-                                        (id_br_type == Consts.BR_LT and id_lt) or
-                                        (id_br_type == Consts.BR_LTU and id_ltu) or
-                                        (id_br_type == Consts.BR_GE and not id_lt) or
-                                        (id_br_type == Consts.BR_GEU and not id_ltu))
+        if ((id_br_type == Consts.BR_J) or (id_br_type == Consts.BR_NE and not id_eq) or (id_br_type == Consts.BR_EQ and id_eq) or (id_br_type == Consts.BR_LT and id_lt) or (id_br_type == Consts.BR_LTU and id_ltu) or(id_br_type == Consts.BR_GE and not id_lt) or (id_br_type == Consts.BR_GEU and not id_ltu)):
+            bp.branch_taken.next =   True    
 
     @always_comb    
-    def _pc_select2(): #bp.current_state debe añadirse al dpath, y del dpath como una señal de control
+    def _pc_select2(): #bp.current_state debe anadirse al dpath, y del dpath como una senal de control
                                                                             # OJO El branch_taken tiene el jump que no considerabamos antes
         io.pc_select2.next =    (modbv(Consts.PC_BRJMP)[Consts.SZ_PC_SEL:]  if (bp.branch_taken and not bp.hit and (bp.current_state == Consts.WN or bp.current_state == Consts.SN)) else
                                 (modbv(Consts.PC_ID)[Consts.SZ_PC_SEL:]     if ((id_br_type == Consts.BR_NE and id_eq and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
@@ -717,15 +707,18 @@ def Ctrlpath(clk,
                                                                                 (id_br_type == Consts.BR_LTU and not id_ltu and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
                                                                                 (id_br_type == Consts.BR_GE and id_lt and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) or
                                                                                 (id_br_type == Consts.BR_GEU and id_ltu) and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) else
-                                (modbv(Consts.BTB_NPC)[Consts.SZ_PC_SEL:]   if (id_br_type == Consts.BR_J) or (bp.branch_taken and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) else #current_state ESTADO DE IF
+                                (modbv(Consts.PC_BTB_NPC)[Consts.SZ_PC_SEL:]   if (id_br_type == Consts.BR_J) or (bp.branch_taken and (bp.current_state == Consts.WT or bp.current_state == Consts.ST)) else #current_state ESTADO DE IF
                                 (modbv(Consts.PC_4)[Consts.SZ_PC_SEL:]))))  #Se necesita cambiar estado a 00 si la instruccion no es un salto
             
             
     @always_comb        #Mux entre la salida del Branch Predictor y las excepciones
     def _pc_select3():
-        io.pc_select3.next = (modbv(Consts.PC_EXC_BTB)[Consts.SZ_PC_SEL2:] if io.csr_exception or io.csr_eret else
-                                  (modbv(Consts.PC_BTB)[Consts.SZ_PC_SEL2:] if (bp.enable == TRUE)))
-
+        if (io.csr_exception or io.csr_eret):
+            io.pc_select3.next = (modbv(Consts.PC_EXC_BTB)[Consts.SZ_PC_SEL2:])      
+        
+        elif(bp.enabled == True):
+            io.pc_select3.next = (modbv(Consts.PC_BTB)[Consts.SZ_PC_SEL2:])
+ 
     @always_comb
     def _fwd_ctrl():
         io.id_fwd1_select.next = (modbv(Consts.FWD_EX)[Consts.SZ_FWD:] if io.id_rs1_addr != 0 and io.id_rs1_addr == io.ex_wb_addr and io.ex_wb_we else
@@ -736,18 +729,20 @@ def Ctrlpath(clk,
                                        (modbv(Consts.FWD_MEM)[Consts.SZ_FWD:] if io.id_rs2_addr != 0 and io.id_rs2_addr == io.mem_wb_addr and io.mem_wb_we else
                                         (modbv(Consts.FWD_WB)[Consts.SZ_FWD:] if io.id_rs2_addr != 0 and io.id_rs2_addr == io.wb_wb_addr and io.wb_wb_we else
                                          (modbv(Consts.FWD_N)[Consts.SZ_FWD:]))))
-
     @always_comb
     def _ctrl_pipeline(): 
         imem_stall            = io.imem_pipeline.valid and not cyc_ended and not imem_m.ack_i and not io.csr_exception
         dmem_stall            = io.dmem_pipeline.valid and not dmem_m.ack_i and not io.csr_exception
-        io.if_kill.next       = (io.pc_select1 != Consts.PC_4) if (ENABLE_BP == False) else     # Modificacion al if_kill, cuando esta activado el BP
-                                ((io.pc_select2 == Consts.PC_ID) or (io.pc_select2 == Consts.PC_BRJMP) or (io.pc_select3 == Consts.PC_EXC_BTB)) if (ENABLE_BP == True)
+        # Modificacion al if_kill, cuando esta activado el BP        
+        if(ENABLE_BP == False):
+            io.if_kill.next = io.pc_select1 != Consts.PC_4
+        else:
+            io.if_kill.next = io.pc_select2 == Consts.PC_ID or io.pc_select2 == Consts.PC_BRJMP or io.pc_select3 == Consts.PC_EXC_BTB
         io.id_stall.next      = (((io.id_fwd1_select == Consts.FWD_EX or io.id_fwd2_select == Consts.FWD_EX) and
                                   ((ex_mem_funct == Consts.M_RD and ex_mem_valid) or ex_csr_cmd != CSRCMD.CSR_IDLE)) or
                                  (id_fence_i and (ex_mem_funct == Consts.M_WR or mem_mem_funct == Consts.M_WR or wb_mem_funct == Consts.M_WR)))
         io.id_kill.next       = False
-        io.full_stall.next    = imem_stall or dmem_stall or io.ex_req_stall
+        io.full_stall.next    = imem_stall or dmem_stall or io.ex_req_stall or bp.fullStallReq 
         io.pipeline_kill.next = io.csr_exception or io.csr_eret
 
     @always_comb
@@ -762,6 +757,8 @@ def Ctrlpath(clk,
         else:
             if imem_m.cyc_o and imem_m.ack_i:
                 instruction_r.next = imem_m.dat_i
+        2+2    
+
 
     @always(clk.posedge)
     def cyc_ended_assign():
