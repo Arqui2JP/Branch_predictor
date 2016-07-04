@@ -91,7 +91,7 @@ def BranchP(clk,
     LINE_LENGTH         = 64
     SET_NUMBER          = 64
 
-    random              = Signal(modbv(0)[31:])
+    random              = Signal(modbv(156)[31:])
     @always(clk.posedge)
     def random_change():
     #Randomness Generator 
