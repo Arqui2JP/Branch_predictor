@@ -21,9 +21,9 @@ class BranchPIO():
         self.pc_id              = Signal(modbv(0)[32:])     #viene del dpath
         self.pc_id_brjmp        = Signal(modbv(0)[32:])     #viene del dpath
         self.pc_id_jalr         = Signal(modbv(0)[32:])
-        self.predict            = Signal(modbv(0)[2:0]) #Bits correspondientes a estado maquina de estado(hacia el control) Tampoco me acuerdo para que era esto :)
+        self.predict            = Signal(modbv(0)[2:0])     #Bits correspondientes a estado maquina de estado(hacia el control) Tampoco me acuerdo para que era esto :)
         self.btb_npc            = Signal(modbv(0)[32:])     #Va al dpath. Salida del btb- entrada al multiplexor
-        self.branch_taken       = Signal(False)             #SE;AL QUE SALE DE ID HAY QUE CONECTARLA    
+        self.branch_taken       = Signal(False)             #SE;AL QUE SALE DE ID  
         self.current_state      = Signal(modbv(0)[1:0])
         self.change_state       = Signal(modbv(0)[1:0])
         self.fullStallReq       = Signal(False)
