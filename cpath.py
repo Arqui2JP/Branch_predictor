@@ -737,7 +737,7 @@ def Ctrlpath(clk,
         if(ENABLE_BP == False):
             io.if_kill.next = io.pc_select1 != Consts.PC_4
         else:
-            io.if_kill.next = io.pc_select2 == Consts.PC_ID or io.pc_select2 == Consts.PC_BRJMP or io.pc_select3 == Consts.PC_EXC_BTB
+            io.if_kill.next = io.pc_select2 == Consts.PC_ID or io.pc_select2 == Consts.PC_BRJMP 
         io.id_stall.next      = (((io.id_fwd1_select == Consts.FWD_EX or io.id_fwd2_select == Consts.FWD_EX) and
                                   ((ex_mem_funct == Consts.M_RD and ex_mem_valid) or ex_csr_cmd != CSRCMD.CSR_IDLE)) or
                                  (id_fence_i and (ex_mem_funct == Consts.M_WR or mem_mem_funct == Consts.M_WR or wb_mem_funct == Consts.M_WR)))
