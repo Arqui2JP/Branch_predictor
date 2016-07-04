@@ -694,8 +694,13 @@ def Ctrlpath(clk,
                                                     ((id_br_type == Consts.BR_GEU and id_ltu) and (bp.current_state == Consts.WT or bp.current_state == Consts.ST))) else
                                             (bp.current_state == Consts.WT or bp.current_state == Consts.ST))))
 
-        if ((id_br_type == Consts.BR_J) or (id_br_type == Consts.BR_NE and not id_eq) or (id_br_type == Consts.BR_EQ and id_eq) or (id_br_type == Consts.BR_LT and id_lt) or (id_br_type == Consts.BR_LTU and id_ltu) or(id_br_type == Consts.BR_GE and not id_lt) or (id_br_type == Consts.BR_GEU and not id_ltu)):
-            bp.branch_taken.next =   True    
+        if (id_br_type == Consts.BR_J): 
+            bp.branch_taken.next =   True
+            bp.valid_jump.next   =   True
+        elif (id_br_type == Consts.BR_NE and not id_eq) or (id_br_type == Consts.BR_EQ and id_eq) or (id_br_type == Consts.BR_LT and id_lt) or (id_br_type == Consts.BR_LTU and id_ltu) or (id_br_type == Consts.BR_GE and not id_lt) or (id_br_type == Consts.BR_GEU and not id_ltu):
+            bp.branch_taken.next =   True
+            bp.valid_branch.next   =   True
+
 
     @always_comb    
     def _pc_select2(): #bp.current_state debe anadirse al dpath, y del dpath como una senal de control

@@ -109,7 +109,7 @@ def BranchP(clk,
     def read_process():
         if state_m == bp_states_m.READ:
             for i in range(0, SET_NUMBER):
-                if  (tag_pc[32:2] == btb_line[i][61:32]):
+                if  (tag_pc[33:2] == btb_line[i][61:32]):
 
                     valid_bit.next      = True
                     index_btb.next      = modbv(i)[6:]
@@ -119,7 +119,7 @@ def BranchP(clk,
                     BPio.current_state.next = btb_line[i][1:]
 
                     BPio.hit.next            = True
-                    n_state_m.next             = bp_states_m.WRITE2
+                    n_state_m.next           = bp_states_m.WRITE2
                 if(i==SET_NUMBER-1):
                     fantasy.next    = True
 
@@ -205,8 +205,7 @@ def BranchP(clk,
         
         if state_m == bp_states_m.CLEAR:
             if clear_done == True:
-                n_state_m.next = bp_states_m.IDLE
-                
+                n_state_m.next = bp_states_m.IDLE  
             else:
                 n_state_m.next = bp_states_m.CLEAR
         elif state_m == bp_states_m.IDLE:
