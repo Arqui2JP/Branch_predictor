@@ -13,7 +13,7 @@ class BranchPIO():
     #IO interface between Branch predictor, dpath and cpath
 
     def __init__(self):
-        self.enabled             = Signal(False)         #Va al cpath
+        self.enabled            = Signal(False)         #Va al cpath
         self.valid_branch       = Signal(False)         #viene del cpath
         self.valid_jump         = Signal(False)         #viene del cpath
         #Cambio senales de io
@@ -133,9 +133,9 @@ def BranchP(clk,
     @always_comb
     def  stallReq():
         if state_m == bp_states_m.CLEAR:
-            BPio.fullStallReq = True
+            BPio.fullStallReq.next = True
         else:
-            BPio.fullStallReq = False
+            BPio.fullStallReq.next = False
 
     @always(clk.posedge)
     def update_state():
