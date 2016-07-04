@@ -249,11 +249,10 @@ def Datapath(clk,
 
         @always_comb        #Assignment for BTB NO SE SI DEBERIAN SER .NEXT las variable que estamos asignando
         def _id_assignment1():
-            ctrlBP.pc_if.next               = id_pc
             ctrlBP.pc_id_brjmp.next         = id_pc_brjmp
             #ctrlBP.pc_id_jalr.next         = id_pc_jalr    Podemos trabajar con el jal despues
             id_pc_next.next                 = if_pc_next    #Valor siguiente a proxima instruccion en etapa id
-            
+            ctrlBP.pc_id                    = id_pc
         # EX stage
         # ----------------------------------------------------------------------
         @always(clk.posedge)
