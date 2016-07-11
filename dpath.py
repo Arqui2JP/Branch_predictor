@@ -62,6 +62,7 @@ def Datapath(clk,
     if_pc_next       = Signal(modbv(0)[32:])
     id_pc            = Signal(modbv(0)[32:])
     btb_pc           = Signal(modbv(0)[32:])
+    badtaken         = Signal(modbv(0)[32:])
 
     id_pc_next  = Signal (modbv (0)[32:0])
     id_instruction   = Signal(modbv(0)[32:])
@@ -139,13 +140,15 @@ def Datapath(clk,
         pc_mux_bp=Mux4(ctrlIO.pc_select2,   #BTB selector
                       if_pc_next,       
                       id_pc_brjmp,      #Hay que ver como se agrega el jump pero ese puede ser otro mux antes de dos entradas. Pero primero intentemos con el branch
-                      id_pc_next,
+                      id_pc_jalr,
                       ctrlBP.btb_npc,
                       btb_pc)
         
-        mux_pc = Mux2(ctrlIO.pc_select3,  #Selector
-                      btb_pc,
+        mux_pc = Mux4(ctrlIO.pc_select3,  #Selector
                       exc_pc,
+                      btb_pc,
+                      badtaken,
+                      0x0BADF00D,
                       a_pc)
                       #Cambio
         # IF stage
@@ -171,8 +174,9 @@ def Datapath(clk,
 
 
         @always_comb
-        def _pc_next1():
+        def trigger_branch():
             ctrlBP.pc_if.next               = if_pc
+            ctrlBP.opcode                   = if_instruction[7:] 
 
         # ID stage
         # ----------------------------------------------------------------------
@@ -246,13 +250,13 @@ def Datapath(clk,
             ctrlIO.csr_interrupt_code.next = csr_exc_io.interrupt_code
             ctrlIO.id_op1.next             = id_op1
             ctrlIO.id_op2.next             = id_op2
+            badtaken.next                  = id_pc + 4
 
         @always_comb        #Assignment for BTB NO SE SI DEBERIAN SER .NEXT las variable que estamos asignando
         def _id_assignment1():
-            ctrlBP.pc_if.next               = id_pc
+            
             ctrlBP.pc_id_brjmp.next         = id_pc_brjmp
-            #ctrlBP.pc_id_jalr.next         = id_pc_jalr    Podemos trabajar con el jal despues
-            id_pc_next.next                 = if_pc_next    #Valor siguiente a proxima instruccion en etapa id
+            ctrlBP.pc_id_jalr.next          = id_pc_jalr    
             
         # EX stage
         # ----------------------------------------------------------------------

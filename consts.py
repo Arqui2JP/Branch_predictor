@@ -39,12 +39,13 @@ class Consts:
     _PC_EXC    = modbv(3)[SZ_PC_SEL:]
 
     # PC Select Signal BP enable
-    SZ_PC_SEL2  = 1
-    PC_EXC_BTB  = 0
-    PC_BTB  = 1
-    _PC_EXC_BTB = modbv(0)[SZ_PC_SEL2:]
-    _PC_BTB     = modbv(1)[SZ_PC_SEL2:]
-    
+    SZ_PC_SEL2   = 2
+    PC_EXC_BTB   = 0
+    PC_BTB       = 1
+    PC_BADTAKEN  = 2
+    _PC_EXC_BTB  = modbv(0)[SZ_PC_SEL2:]
+    _PC_BTB      = modbv(1)[SZ_PC_SEL2:]
+    _PC_BADTAKEN = modbv(2)[SZ_PC_SEL2:]
     #PC select signal. BTB MUX
     PC_ID   = 2
     PC_BTB_NPC  = 3
