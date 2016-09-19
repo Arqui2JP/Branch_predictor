@@ -24,6 +24,7 @@ class BranchPIO():
         self.pc_if              = Signal(modbv(0)[32:])     
         self.pc_id_brjmp        = Signal(modbv(0)[32:])     
         self.pc_id_jalr         = Signal(modbv(0)[32:])     
+
         self.predict            = Signal(modbv(0)[2:0])     #Bits correspondientes a estado maquina de estado(hacia el control) Tampoco me acuerdo para que era esto :)
         self.btb_npc            = Signal(modbv(0)[32:])     #Va al dpath. Salida del btb- entrada al multiplexor
         self.branch_taken       = Signal(False)             #SE;AL QUE SALE DE ID HAY QUE CONECTARLA    
@@ -135,7 +136,7 @@ def BranchP(clk,
                     index_btb.next      = modbv(i)[6:]
 
                     #Envio de lectura al cpath
-                    BPio.btb_npc.next       = concat(modbv(btb_line[i][32:2])[30:], modbv(0)[2:])
+                    BPio.btb_npc.next       = concat(False,modbv(btb_line[i][32:2])[30:], False)
                     BPio.current_state.next = btb_line[i][2:]
 
 

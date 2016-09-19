@@ -681,9 +681,9 @@ def Ctrlpath(clk,
     @always_comb
     def _BTBline_state_change():   #BTBline state logic while it is on WRITE2
         
-        if ((bp.valid_jump or bp.valid_jalr) or  (id_br_type == Consts.BR_NE and not id_eq) or (id_br_type == Consts.BR_EQ and id_eq ) or (id_br_type == Consts.BR_LT and id_lt) or (id_br_type == Consts.BR_LTU and id_ltu ) or (id_br_type == Consts.BR_GE and not id_lt ) or (id_br_type == Consts.BR_GEU and not id_ltu )):
+        if ((id_br_type == Consts.BR_NE and not id_eq) or (id_br_type == Consts.BR_EQ and id_eq ) or (id_br_type == Consts.BR_LT and id_lt) or (id_br_type == Consts.BR_LTU and id_ltu ) or (id_br_type == Consts.BR_GE and not id_lt ) or (id_br_type == Consts.BR_GEU and not id_ltu )):
             bp.change_state.next = True
-        else:
+        elif ((id_br_type == Consts.BR_NE and  id_eq) or (id_br_type == Consts.BR_EQ and not id_eq ) or (id_br_type == Consts.BR_LT and not id_lt) or (id_br_type == Consts.BR_LTU and not id_ltu ) or (id_br_type == Consts.BR_GE and  id_lt ) or (id_br_type == Consts.BR_GEU and  id_ltu )):
             bp.change_state.next = False
 
 
@@ -719,6 +719,11 @@ def Ctrlpath(clk,
             io.pc_select3.next = (modbv(Consts.PC_BADTAKEN)[Consts.SZ_PC_SEL2:])
         else:
             io.pc_select3.next = (modbv(Consts.PC_BTB)[Consts.SZ_PC_SEL2:])
+
+    @always_comb
+    def turn_off_badtaken():
+        if io.pc_select3 == Consts.PC_BADTAKEN:
+            bp.change_state.next = True
  
     @always_comb
     def _fwd_ctrl():
